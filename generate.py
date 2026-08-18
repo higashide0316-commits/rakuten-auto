@@ -254,6 +254,22 @@ def call_api(url, params):
     raise RakutenApiError(f"楽天APIの呼び出しに{MAX_RETRY}回失敗しました。\n{last_error}")
 
 
+def as_int(v, default=0):
+    """どんな形で来ても整数にする（ダメなら default）"""
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return default
+
+
+def as_float(v, default=0.0):
+    """どんな形で来ても小数にする（ダメなら default）"""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
 def normalize(raw_items):
     """楽天から返ってきたデータを、記事に使いやすい形に整える"""
     result = []
@@ -271,17 +287,22 @@ def normalize(raw_items):
         if not link:
             continue
 
+        # ★重要★ 楽天のAPIは、同じ項目でも「数値」で返ってきたり
+        # 「文字列」で返ってきたりします（ランキングAPIと検索APIで違う）。
+        # 型が混ざったまま大小を比べるとプログラムが止まるので、ここでそろえます。
         result.append({
-            "rank": item.get("rank"),
+            "rank": as_int(item.get("rank"), 0) or None,
             "name": (item.get("itemName") or "").strip(),
-            "price": item.get("itemPrice") or 0,
+            "price": as_int(item.get("itemPrice")),
             "url": link,
             "image": image_url,
             "shop": (item.get("shopName") or "").strip(),
-            "review_count": item.get("reviewCount") or 0,
-            "review_average": item.get("reviewAverage") or 0,
+            "review_count": as_int(item.get("reviewCount")),
+            "review_average": as_float(item.get("reviewAverage")),
             "caption": (item.get("itemCaption") or "").strip(),
-            "point_rate": item.get("pointRate") or 1,
+            "point_rate": as_int(item.get("pointRate"), 1) or 1,
+            # 0 = 送料込み / 1 = 送料別 / -1 = 情報なし
+            "postage_flag": as_int(item.get("postageFlag"), -1),
         })
     return result
 
@@ -939,9 +960,13 @@ def build_one(theme, now, demo=False):
         "item_count": n,
     }
 
+    # 先にHTMLを完成させてから書き込みます。書きながら作ると、
+    # 途中で失敗したときに「中身が空のページ」が公開されてしまうためです。
+    html_text = render_article(post, items)
+
     os.makedirs(POSTS_DIR, exist_ok=True)
     with open(os.path.join(POSTS_DIR, post["filename"]), "w", encoding="utf-8") as f:
-        f.write(render_article(post, items))
+        f.write(html_text)
 
     print(f"  ✓ {n}件の商品で記事を作りました → docs/posts/{post['filename']}")
     return post
@@ -1060,8 +1085,12 @@ def main():
     # クリックしてもエラー（404）になってしまいます。
     # 毎回「ファイルが実在するか」を確認し、無いものは一覧から自動で外します。
     before = len(posts)
-    posts = [p for p in posts
-             if os.path.exists(os.path.join(POSTS_DIR, p.get("filename", "")))]
+    def alive(p):
+        """記事ファイルが実在し、かつ中身が空でないか"""
+        f = os.path.join(POSTS_DIR, p.get("filename", ""))
+        return os.path.exists(f) and os.path.getsize(f) > 500
+
+    posts = [p for p in posts if alive(p)]
     removed = before - len(posts)
     if removed:
         print(f"  ※ ファイルが無くなっていた記事 {removed}件 を一覧から外しました。")
