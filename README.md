@@ -1,11 +1,7 @@
 # 楽天アフィリエイト 記事 自動作成・自動投稿システム
 
-毎日決まった時間に、楽天市場のランキングとハーレー用品の記事を**自動で作って、自動でブログに公開**します。
+毎日決まった時間に、楽天市場のランキング・ゴルフ用品・ハーレー用品の記事を**自動で作って、自動でブログに公開**します。
 パソコンの電源が切れていても、GitHub のサーバーが勝手に動いてくれます。**費用は0円**です。
-
----
-
-## 全体の流れ（イメージ）
 
 ```
    GitHub のサーバー（毎日 朝7時に自動起動）
@@ -25,120 +21,64 @@
 
 ---
 
-## 準備するもの（全部無料）
+## ✅ ここまで完了しています
 
-| 必要なもの | どこで手に入る | 所要時間 |
+- リポジトリの作成
+- ファイルの配置（`generate.py` と `.github/workflows/daily.yml`）
+
+## 📋 これからやること（4ステップ）
+
+| | やること | 所要時間 |
 |---|---|---|
-| 楽天会員アカウント | すでにお持ちのはず | - |
-| 楽天アフィリエイトID | 楽天アフィリエイトに登録 | 5分 |
-| 楽天ウェブサービスのアプリID＋アクセスキー | 楽天ウェブサービスで申請 | 10分 |
-| GitHubアカウント | お持ちとのことなのでOK | - |
+| **A** | 楽天アフィリエイトIDを取る | 5分 |
+| **B** | 楽天のアプリIDとアクセスキーを取る | 10分 |
+| **C** | GitHubに4つの値を登録する | 5分 |
+| **D** | 動かして、ブログを公開する | 5分 |
 
----
-
-# セットアップ手順
-
-**⚠️ 順番が大事です。** GitHub Pages のアドレスを先に決めないと、楽天のアプリ登録ができません。
-必ず上から順番にやってください。
-
----
-
-## Step 1. GitHub にリポジトリを作る
-
-1. https://github.com/new を開きます。
-2. 次のように入力します。
-
-   | 項目 | 入力する内容 |
-   |---|---|
-   | Repository name | `rakuten-auto` （好きな名前でOK。英数字とハイフンだけ） |
-   | Description | 空でOK |
-   | Public / Private | **Public を選ぶ** ← 無料でGitHub Pagesを使うために必須 |
-   | Add a README file | チェックしない |
-
-3. 緑の「Create repository」ボタンを押します。
-
----
-
-## Step 2. ファイルを置く
-
-このZIPを解凍すると、こういう中身になっています。
+**このブログのアドレスは、すでに決まっています。** Bのステップで使うのでメモしてください。
 
 ```
-rakuten-auto/
-├── .github/workflows/daily.yml   ← 自動実行の設定
-├── scripts/
-│   ├── config.py                 ← ★ここだけ後で編集します
-│   ├── rakuten_api.py            ← 楽天APIとの通信
-│   ├── templates.py              ← 見た目（HTML/CSS）
-│   ├── generate.py               ← メインプログラム
-│   └── check_api.py              ← 接続テスト用
-├── docs/                         ← ★ここが公開されるブログになります
-└── data/posts.json               ← 記事の一覧を記録するファイル
-```
-
-### 画面だけでやる方法（コマンド不要・おすすめ）
-
-1. 作ったリポジトリのページで「**uploading an existing file**」というリンクを押します。
-2. **解凍したフォルダの中身**（`rakuten-auto` フォルダそのものではなく、その**中**にある `scripts` や `docs` など）を、まとめてドラッグ＆ドロップします。
-3. 下の「Commit changes」ボタンを押します。
-
-> ⚠️ **`.github` フォルダに注意**
-> 名前がドットで始まるフォルダは、ドラッグ＆ドロップで無視されることがあります。
-> アップロード後にリポジトリを見て `.github` が無ければ、次の方法で作ってください。
-> 「Add file」→「Create new file」→ ファイル名の欄に
-> `.github/workflows/daily.yml` と入力（スラッシュを打つと自動でフォルダになります）
-> → 中身に `daily.yml` の内容を貼り付け → Commit changes。
-
-### コマンドでやる方法（Gitが使える方）
-
-```bash
-cd rakuten-auto
-git init
-git add -A
-git commit -m "初回アップロード"
-git branch -M main
-git remote add origin https://github.com/あなたのユーザー名/rakuten-auto.git
-git push -u origin main
+https://higashide0316-commits.github.io/rakuten-auto/
 ```
 
 ---
 
-## Step 3. GitHub Pages をオンにする
+# Step A. 楽天アフィリエイトIDを取る
 
-1. リポジトリの上部メニューから「**Settings**」を押します。
-2. 左のメニューから「**Pages**」を押します。
-3. 「Build and deployment」の欄で次のように設定します。
-
-   | 項目 | 選ぶもの |
-   |---|---|
-   | Source | **Deploy from a branch** |
-   | Branch | **main** |
-   | フォルダ | **/docs** ← ここ重要 |
-
-4. 「Save」を押します。
-5. 1〜2分待ってページを再読み込みすると、上のほうにアドレスが出ます。
-
-```
-https://あなたのユーザー名.github.io/rakuten-auto/
-```
-
-**このアドレスをメモしてください。** 次のStepで使います。
-
----
-
-## Step 4. 楽天アフィリエイトIDを取る
+### A-1. 楽天アフィリエイトに利用登録する
 
 1. https://affiliate.rakuten.co.jp/ を開き、楽天会員でログインします。
-2. 初めてなら、案内に従って利用登録します（審査なしですぐ使えます）。
-3. ログイン後、「**サイト・アプリ管理**」から、Step 3 でメモしたGitHub Pagesのアドレスを**サイトとして登録**します。
-4. 管理画面のどこかに表示されている **アフィリエイトID**（`1a2b3c4d.5e6f7g8h.…` のような形の文字列）をメモします。
+2. 初めてなら、案内に従って利用登録します（**審査なし・無料**ですぐ使えます）。
+3. 「サイト・アプリ管理」から、上のブログのアドレスを**サイトとして登録**しておきます。
 
-> 💡 アフィリエイトIDは、報酬をあなたの口座に結びつけるための番号です。
-> これが無いと、いくら商品が売れても1円も入りません。
+### A-2. アフィリエイトIDを確認する
+
+**ここが分かりにくいところです。** アフィリエイトIDは、楽天アフィリエイトの管理画面ではなく、
+**楽天ウェブサービス側の専用ページ**にあります。
+
+**👉 https://webservice.rakuten.co.jp/account_affiliate_id**
+
+楽天会員でログインした状態でこのページを開くと、IDが表示されます。
+形はこんな感じの、英数字をピリオドで4つに区切った文字列です。
+
+```
+1a2b3c4d.5e6f7g8h.1a2b3c4e.9f0a1b2c
+```
+
+この文字列をまるごとコピーしてメモしてください。
+
+> ### 🚨 ネット上の古い記事にだまされないでください
+>
+> 「アフィリエイトリンクを作って、そのURLの中からIDを抜き出す」という手順を
+> 書いている記事がたくさんありますが、**この方法は現在は使えません。**
+> 楽天の公式FAQに、通常のアフィリエイトリンクのURLには
+> **個人を特定する文字列は含まれていない**と明記されています。
+> さらに「**楽天ウェブサービスのアフィリエイトIDは、そのサービス専用のもの**」
+> とも書かれています。APIを使う自動化では、必ず上の専用ページのIDを使ってください。
 
 ---
 
-## Step 5. 楽天ウェブサービスでアプリIDとアクセスキーを取る
+# Step B. 楽天ウェブサービスでアプリIDとアクセスキーを取る
 
 **⚠️ ここが一番の関門です。** 2026年5月に仕様が大きく変わり、**アプリIDとアクセスキーの2つが必須**になりました。
 昔のネット記事の手順は古くて通用しないので、以下のとおりにしてください。
@@ -147,15 +87,15 @@ https://あなたのユーザー名.github.io/rakuten-auto/
 2. 「**アプリID発行**」を押して、新規アプリケーション登録に進みます。
 3. 次のように入力します。
 
-   | 項目 | 入力する内容 | 補足 |
-   |---|---|---|
-   | アプリケーション名 | `楽天うれすじ速報` | 何でもOK |
-   | アプリケーションURL | Step 3 のGitHub Pagesのアドレス | 例: `https://あなた.github.io/rakuten-auto/` |
-   | アプリケーションタイプ | **ウェブフロントエンド系を選ぶ** | ★超重要（下の警告を読んでください） |
-   | 許可ウェブサイト | Step 3 のアドレスのドメイン部分 | 例: `あなた.github.io` |
-   | データ利用目的 | `商品ランキングの紹介サイトでの表示` | |
-   | 想定QPS | `1` | 1秒あたりのアクセス数。少なめでOK |
-   | APIスコープ | 楽天市場API | |
+   | 項目 | 入力する内容 |
+   |---|---|
+   | アプリケーション名 | `楽天うれすじ速報`（何でもOK） |
+   | アプリケーションURL | `https://higashide0316-commits.github.io/rakuten-auto/` |
+   | アプリケーションタイプ | **ウェブフロントエンド系を選ぶ** ← ★超重要 |
+   | 許可ウェブサイト | `higashide0316-commits.github.io` |
+   | データ利用目的 | `商品ランキングの紹介サイトでの表示` |
+   | 想定QPS | `1` |
+   | APIスコープ | 楽天市場API |
 
 4. 登録が完了すると、**アプリケーションID** と **アクセスキー** が表示されます。**両方メモしてください。**
 
@@ -173,51 +113,51 @@ https://あなたのユーザー名.github.io/rakuten-auto/
 
 ---
 
-## Step 6. GitHub に秘密の情報を登録する（Secrets）
+# Step C. GitHub に秘密の情報を登録する（Secrets）
 
-アプリIDなどを直接ファイルに書くと、世界中の人に見られてしまいます。
-GitHub の「金庫」に入れて使います。
+アプリIDなどを直接ファイルに書くと、世界中の人に見られてしまいます。GitHub の「金庫」に入れて使います。
 
-1. リポジトリの「**Settings**」を押します。
-2. 左メニューの「**Secrets and variables**」→「**Actions**」を押します。
-3. 緑の「**New repository secret**」を押して、**4つ**登録します。
-   （1つ登録するたびに、また「New repository secret」を押します）
+**👉 https://github.com/higashide0316-commits/rakuten-auto/settings/secrets/actions**
 
-   | Name（名前） | Secret（値） |
-   |---|---|
-   | `RAKUTEN_APP_ID` | Step 5 のアプリケーションID |
-   | `RAKUTEN_ACCESS_KEY` | Step 5 のアクセスキー |
-   | `RAKUTEN_AFFILIATE_ID` | Step 4 のアフィリエイトID |
-   | `RAKUTEN_REFERER` | Step 3 のGitHub Pagesのアドレス（例: `https://あなた.github.io/rakuten-auto/`） |
+このページを開いて、緑の「**New repository secret**」を押し、**4つ**登録します。
+（1つ登録するたびに、また「New repository secret」を押します）
+
+| Name（名前） | Secret（値） |
+|---|---|
+| `RAKUTEN_APP_ID` | Step B のアプリケーションID |
+| `RAKUTEN_ACCESS_KEY` | Step B のアクセスキー |
+| `RAKUTEN_AFFILIATE_ID` | Step A のアフィリエイトID |
+| `RAKUTEN_REFERER` | `https://higashide0316-commits.github.io/rakuten-auto/` |
 
 > ⚠️ 名前は**大文字・アンダースコアまで完全に一致**させてください。1文字でも違うと動きません。
 
 ---
 
-## Step 7. 設定ファイルを直す
+# Step D. 動かして公開する
 
-1. リポジトリで `scripts/config.py` を開き、右上の**鉛筆マーク**を押します。
-2. 上のほうにある `SITE_URL` を、Step 3 のアドレスに書き換えます。
+### D-1. 記事を作らせる
 
-```python
-SITE_URL = "https://あなたのユーザー名.github.io/rakuten-auto"
-```
+**👉 https://github.com/higashide0316-commits/rakuten-auto/actions**
 
-3. ついでに `SITE_TITLE` も好きなブログ名に変えてOKです。
-4. 「Commit changes」を押します。
+1. 初回は「I understand my workflows, go ahead and enable them」という緑ボタンが出るので押します。
+2. 左に「**記事を自動生成して公開**」が出るので、それを押します。
+3. 右側の「**Run workflow**」→ もう一度「**Run workflow**」を押します。
+4. 1分ほど待つと、実行結果が出ます。
 
----
-
-## Step 8. 動かしてみる
-
-1. リポジトリの上部メニュー「**Actions**」を押します。
-2. 初回は「I understand my workflows, go ahead and enable them」という緑ボタンが出るので押します。
-3. 左に「**記事を自動生成して公開**」が出るので、それを押します。
-4. 右側の「**Run workflow**」→ もう一度「**Run workflow**」を押します。
-5. 1分ほど待つと、実行結果が出ます。
-
-   - 🟢 **緑のチェック** → 成功！ Step 3 のアドレスを開いてみてください。記事ができています。
+   - 🟢 **緑のチェック** → 成功！ D-2 に進みます。
    - 🔴 **赤いバツ** → 失敗。クリックして「記事を生成」の行を開くと、日本語でエラーの原因が出ます。
+
+### D-2. GitHub Pages をオンにする
+
+**👉 https://github.com/higashide0316-commits/rakuten-auto/settings/pages**
+
+| 項目 | 選ぶもの |
+|---|---|
+| Source | **Deploy from a branch** |
+| Branch | **main** |
+| フォルダ | **/docs** ← ここ重要 |
+
+「Save」を押して1〜2分待ってから、ブログのアドレスを開いてください。記事が表示されます。
 
 **これ以降は、毎日朝7時に自動で記事が増えていきます。**
 
@@ -227,20 +167,28 @@ SITE_URL = "https://あなたのユーザー名.github.io/rakuten-auto"
 
 | エラーメッセージ | 原因 | 対処 |
 |---|---|---|
-| `RAKUTEN_APP_ID が設定されていません` | Secretsの名前が違う | Step 6 をやり直す。名前のスペルを確認 |
-| `HTTP 403 … CLIENT_IP_NOT_ALLOWED` | アプリをバックエンド型で登録した | Step 5 の警告を読み、アプリタイプをフロントエンド系に変更 |
+| `RAKUTEN_APP_ID が設定されていません` | Secretsの名前が違う | Step C をやり直す。名前のスペルを確認 |
+| `HTTP 403 … CLIENT_IP_NOT_ALLOWED` | アプリをバックエンド型で登録した | Step B の警告を読み、アプリタイプをフロントエンド系に変更 |
 | `HTTP 400` / `HTTP 401` | アプリIDかアクセスキーが違う／古い | 2026年5月以降の新しいIDを再発行する |
-| `HTTP 429` | アクセスしすぎ | `config.py` の `REQUEST_INTERVAL_SEC` を `3.0` などに増やす |
-| ページが404になる | Pagesの設定ミス | Step 3 で「/docs」を選んだか確認 |
-| 記事はできるがリンクを踏んでも報酬にならない | アフィリエイトIDが違う | `check_api.py` を実行して「アフィリエイトリンク OK」が出るか確認 |
+| `HTTP 429` | アクセスしすぎ | `generate.py` の `REQUEST_INTERVAL_SEC` を `3.0` などに増やす |
+| ページが404になる | Pagesの設定ミス | Step D-2 で「/docs」を選んだか確認 |
+| 記事はできるがリンクが報酬にならない | アフィリエイトIDが違う | Actions のログで「アフィリエイトリンク OK」が出るか確認 |
 
 ---
 
 # カスタマイズのしかた
 
-すべて `scripts/config.py` の中で完結します。
+すべて `generate.py` の**上のほうにある「設定エリア」**の中だけで完結します。
+GitHubの画面で `generate.py` を開き、右上の**鉛筆マーク（✏️）**を押すと書き換えられます。
+書き換えたら、右上の緑の「**Commit changes**」を押せば保存されます。
 
-### 記事の本数を変える
+### ブログの名前を変える
+```python
+SITE_TITLE = "楽天うれすじ速報"          ← 好きな名前に
+SITE_DESCRIPTION = "楽天市場の売れ筋…"   ← 好きな説明文に
+```
+
+### 記事に載せる商品の数を変える
 ```python
 "hits": 10,   →   "hits": 20,
 ```
@@ -254,9 +202,9 @@ SITE_URL = "https://あなたのユーザー名.github.io/rakuten-auto"
 ],
 ```
 
-### 別のジャンルの記事を追加する
-`THEMES` のリストに、同じ形のかたまりをコピーして足すだけです。
-ジャンルIDは https://www.rakuten.co.jp/category/ でカテゴリを開くと、URLの中に数字で出てきます。
+### 別ジャンルの記事を追加する
+`THEMES` の中の `{ }` のかたまりを丸ごとコピーして足すだけです。
+ジャンル番号は https://www.rakuten.co.jp/category/ でカテゴリを開くと、URLの中に数字で出てきます。
 
 ### 投稿の時間を変える
 `.github/workflows/daily.yml` の `cron` を書き換えます。
@@ -273,22 +221,21 @@ SITE_URL = "https://あなたのユーザー名.github.io/rakuten-auto"
 
 # 自分のパソコンで試したいとき（任意）
 
-Pythonが入っていれば、GitHubに上げる前に見た目を確認できます。
+Pythonが入っていれば、手元でも動かせます。外部ライブラリのインストールは不要です。
 
 ```
 # ダミーの商品データで、記事の見た目だけ確認する（楽天APIは使いません）
-python scripts/generate.py --demo
+python generate.py --demo
 
-# 楽天APIとの接続テスト
+# 楽天APIにつながるかテストする
 set RAKUTEN_APP_ID=あなたのアプリID
 set RAKUTEN_ACCESS_KEY=あなたのアクセスキー
 set RAKUTEN_AFFILIATE_ID=あなたのアフィリエイトID
-set RAKUTEN_REFERER=https://あなた.github.io/rakuten-auto/
-python scripts/check_api.py
+set RAKUTEN_REFERER=https://higashide0316-commits.github.io/rakuten-auto/
+python generate.py --check
 ```
 
 できあがった `docs/index.html` をブラウザで開けば確認できます。
-外部ライブラリのインストールは不要です（Python標準機能だけで動きます）。
 
 ---
 
@@ -309,5 +256,3 @@ python scripts/check_api.py
 2. **X（旧Twitter）への自動投稿を追加** — 新着記事のURLを自動ポストして流入を増やします。
 3. **記事本文をAIで肉付けする** — 商品リストだけでなく、選び方の解説を自動生成すると検索評価が上がります。
 4. **サイトマップとRSSの自動生成** — Googleに早くインデックスさせるため。
-
-必要になったら言ってください。追加します。
