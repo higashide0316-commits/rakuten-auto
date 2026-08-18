@@ -38,7 +38,7 @@
 **このブログのアドレスは、すでに決まっています。** Bのステップで使うのでメモしてください。
 
 ```
-https://higashide0316-commits.github.io/rakuten-auto/
+https://k-ranklab.github.io/
 ```
 
 ---
@@ -90,9 +90,9 @@ https://higashide0316-commits.github.io/rakuten-auto/
    | 項目 | 入力する内容 |
    |---|---|
    | アプリケーション名 | `楽天うれすじ速報`（何でもOK） |
-   | アプリケーションURL | `https://higashide0316-commits.github.io/rakuten-auto/` |
+   | アプリケーションURL | `https://k-ranklab.github.io/` |
    | アプリケーションタイプ | **ウェブフロントエンド系を選ぶ** ← ★超重要 |
-   | 許可ウェブサイト | `higashide0316-commits.github.io` |
+   | 許可ウェブサイト | `k-ranklab.github.io` |
    | データ利用目的 | `商品ランキングの紹介サイトでの表示` |
    | 想定QPS | `1` |
    | APIスコープ | 楽天市場API |
@@ -117,7 +117,7 @@ https://higashide0316-commits.github.io/rakuten-auto/
 
 アプリIDなどを直接ファイルに書くと、世界中の人に見られてしまいます。GitHub の「金庫」に入れて使います。
 
-**👉 https://github.com/higashide0316-commits/rakuten-auto/settings/secrets/actions**
+**👉 https://github.com/k-ranklab/k-ranklab.github.io/settings/secrets/actions**
 
 このページを開いて、緑の「**New repository secret**」を押し、**4つ**登録します。
 （1つ登録するたびに、また「New repository secret」を押します）
@@ -127,7 +127,7 @@ https://higashide0316-commits.github.io/rakuten-auto/
 | `RAKUTEN_APP_ID` | Step B のアプリケーションID |
 | `RAKUTEN_ACCESS_KEY` | Step B のアクセスキー |
 | `RAKUTEN_AFFILIATE_ID` | Step A のアフィリエイトID |
-| `RAKUTEN_REFERER` | `https://higashide0316-commits.github.io/rakuten-auto/` |
+| `RAKUTEN_REFERER` | `https://k-ranklab.github.io/` |
 
 > ⚠️ 名前は**大文字・アンダースコアまで完全に一致**させてください。1文字でも違うと動きません。
 
@@ -137,7 +137,7 @@ https://higashide0316-commits.github.io/rakuten-auto/
 
 ### D-1. 記事を作らせる
 
-**👉 https://github.com/higashide0316-commits/rakuten-auto/actions**
+**👉 https://github.com/k-ranklab/k-ranklab.github.io/actions**
 
 1. 初回は「I understand my workflows, go ahead and enable them」という緑ボタンが出るので押します。
 2. 左に「**記事を自動生成して公開**」が出るので、それを押します。
@@ -149,7 +149,7 @@ https://higashide0316-commits.github.io/rakuten-auto/
 
 ### D-2. GitHub Pages をオンにする
 
-**👉 https://github.com/higashide0316-commits/rakuten-auto/settings/pages**
+**👉 https://github.com/k-ranklab/k-ranklab.github.io/settings/pages**
 
 | 項目 | 選ぶもの |
 |---|---|
@@ -231,7 +231,7 @@ python generate.py --demo
 set RAKUTEN_APP_ID=あなたのアプリID
 set RAKUTEN_ACCESS_KEY=あなたのアクセスキー
 set RAKUTEN_AFFILIATE_ID=あなたのアフィリエイトID
-set RAKUTEN_REFERER=https://higashide0316-commits.github.io/rakuten-auto/
+set RAKUTEN_REFERER=https://k-ranklab.github.io/
 python generate.py --check
 ```
 
