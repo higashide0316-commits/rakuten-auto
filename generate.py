@@ -290,7 +290,13 @@ def fetch_ranking(genre_id=0, hits=10):
         params["genreId"] = genre_id
     data = call_api(RANKING_URL, params)
     time.sleep(REQUEST_INTERVAL_SEC)
-    return normalize(data.get("Items", []))[:hits]
+    items = normalize(data.get("Items", []))
+
+    # ★重要★ 楽天のランキングAPIは、順位が降順（30位→1位）で返ってくることがあります。
+    # そのまま先頭10件を取ると「30位〜21位」になってしまうので、
+    # 必ず1位が先頭に来るよう並べ直してから上位を取り出します。
+    items.sort(key=lambda x: x["rank"] if isinstance(x.get("rank"), int) else 9999)
+    return items[:hits]
 
 
 def fetch_search(keyword, genre_id=0, hits=10, sort="-reviewCount"):
