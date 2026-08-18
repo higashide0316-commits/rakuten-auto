@@ -19,6 +19,7 @@ import datetime
 import html
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -107,6 +108,27 @@ THEMES = [
         "sort": "-reviewCount",
     },
 ]
+
+
+# --- フッターに出すバナー（任意）-------------------------------------
+# 楽天アフィリエイトで発行したバナーのHTMLを、そのまま貼り付けてください。
+# 全ページのフッターに、小さく1枚だけ表示されます。
+#
+#   ★AMP用のコード（<amp-img> で始まるもの）を貼っても大丈夫です。
+#     普通のHTML用に自動で直してから表示します。
+#   ★空（""）にすると、バナーは表示されません。
+#
+# おすすめは「お買い物マラソン」「スーパーSALE」などの
+# 期間限定キャンペーンのバナーです。読者にとって「いま買うと得」という
+# 情報になるので、ただの広告より嫌がられにくく、クリックもされやすいです。
+# セールが終わったら、新しいバナーのコードに貼り替えてください。
+
+FOOTER_BANNER = """
+<a href="https://hb.afl.rakuten.co.jp/hsc/56abac8a.d0a8ffd6.56aba98d.e1143982/?link_type=pict&ut=eyJwYWdlIjoic2hvcCIsInR5cGUiOiJwaWN0IiwiY29sIjoxLCJjYXQiOiI0NCIsImJhbiI6Mjc5NDkyMSwiYW1wIjp0cnVlfQ%3D%3D" target="_blank" rel="nofollow sponsored noopener"><amp-img src="https://hbb.afl.rakuten.co.jp/hsb/56abac8a.d0a8ffd6.56aba98d.e1143982/?me_id=1&me_adv_id=2794921&t=pict" alt="" layout="fixed" height="60" width="234"></amp-img></a>
+"""
+
+# バナーの上に出す小さな見出し（空にすると出ません）
+FOOTER_BANNER_LABEL = "楽天市場のキャンペーン"
 
 
 # --- 楽天APIの細かい設定（基本さわらなくてOK）------------------------
@@ -503,6 +525,11 @@ footer.site{margin-top:56px; padding:22px 0 0; border-top:1px solid var(--line);
 footer.site a{color:var(--muted);}
 footer.site .fnav{margin:0 0 12px;}
 footer.site .fnav a{margin-right:14px;}
+.fbanner{text-align:center; margin:0 0 20px; padding:16px 0 18px;
+  border-bottom:1px solid var(--line);}
+.fbanner .fblabel{margin:0 0 8px; font-size:11.5px; color:var(--muted);
+  letter-spacing:.04em;}
+.fbanner a{display:inline-block; line-height:0;}
 .prose h2{font-size:18px; margin:30px 0 10px; padding-left:11px;
   border-left:4px solid var(--link);}
 .prose p,.prose li{font-size:14px; color:#333b45;}
@@ -612,6 +639,35 @@ def make_badges(item, stats):
 #  ページ組み立て
 # =====================================================================
 
+def build_footer_banner():
+    """
+    設定に貼られたバナーHTMLを、普通のページで表示できる形に直す。
+
+    楽天のリンク作成画面で「AMP対応」を選ぶと <amp-img> というタグで
+    発行されますが、これはAMP専用のページでしか表示されません。
+    普通の <img> に置き換えて、どのページでも出るようにします。
+    """
+    code = (FOOTER_BANNER or "").strip()
+    if not code:
+        return ""
+
+    # <amp-img ...></amp-img> を <img ...> に置き換える
+    code = re.sub(r"<amp-img\b", "<img", code)
+    code = re.sub(r"</amp-img\s*>", "", code)
+    # AMP専用の属性を消す
+    code = re.sub(r'\s+layout="[^"]*"', "", code)
+    # 画像の枠線を消して中央に置く
+    code = re.sub(r"<img\b", '<img style="border:0;max-width:100%;height:auto" ', code, count=1)
+
+    # 広告リンクとして正しい属性が付いているか念のため補う
+    if "rel=" not in code:
+        code = code.replace("<a ", '<a rel="nofollow sponsored noopener" ', 1)
+
+    label = (FOOTER_BANNER_LABEL or "").strip()
+    label_html = f'<p class="fblabel">{esc(label)}</p>' if label else ""
+    return f'<div class="fbanner">{label_html}{code}</div>'
+
+
 def page_shell(title, body_html, is_top=False, description=None, extra_head=""):
     prefix = "" if is_top else "../"
     desc = description or SITE_DESCRIPTION
@@ -625,7 +681,7 @@ def page_shell(title, body_html, is_top=False, description=None, extra_head=""):
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(shorten(desc, 120))}">
 <meta property="og:type" content="{'website' if is_top else 'article'}">
-<link rel="stylesheet" href="{prefix}style.css">
+<link rel="stylesheet" href="{prefix}style.css">\n<link rel="alternate" type="application/rss+xml" title="{esc(SITE_TITLE)}" href="{prefix}feed.xml">
 {extra_head}
 </head>
 <body>
@@ -639,6 +695,7 @@ def page_shell(title, body_html, is_top=False, description=None, extra_head=""):
 <div class="wrap">
 {body_html}
 <footer class="site">
+{build_footer_banner()}
   <p class="fnav">
     <a href="{prefix}index.html">ホーム</a>
     <a href="{prefix}about.html">このサイトについて</a>
@@ -946,7 +1003,7 @@ def build_one(theme, now, demo=False):
 
     if not items:
         print("  ! 商品が1件も取れなかったので、この記事はスキップします。")
-        return None
+        return None, []
 
     n = len(items)
     post = {
@@ -969,7 +1026,8 @@ def build_one(theme, now, demo=False):
         f.write(html_text)
 
     print(f"  ✓ {n}件の商品で記事を作りました → docs/posts/{post['filename']}")
-    return post
+    # 記事情報だけでなく商品データも返します（SNS用フィードで使うため）
+    return post, items
 
 
 # ---------------------------------------------------------------------
@@ -1034,6 +1092,121 @@ def run_check():
     return 0
 
 
+def xesc(text):
+    """RSS（XML）に入れても壊れない文字に変換する"""
+    return (str(text or "").replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def rfc822(dt):
+    """RSSが求める日付の書き方に直す"""
+    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    return (f"{days[dt.weekday()]}, {dt.day:02d} {months[dt.month-1]} {dt.year} "
+            f"{dt:%H:%M:%S} +0900")
+
+
+def _rss(title, desc, link, items, now):
+    """RSSの外枠を作る共通部分"""
+    body = "\n".join(items)
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>{xesc(title)}</title>
+<link>{xesc(link)}</link>
+<description>{xesc(desc)}</description>
+<language>ja</language>
+<lastBuildDate>{rfc822(now)}</lastBuildDate>
+{body}
+</channel></rss>
+"""
+
+
+def write_feeds(posts, built, now):
+    """
+    RSSを2種類つくる。
+
+    ① feed.xml   … ふつうのブログ用RSS。記事だけが並びます。
+    ② social.xml … SNSに自動投稿するための専用RSS。
+                   IFTTTなどの無料ツールにこのURLを登録すると、
+                   新しい項目が出るたびに自動でSNSに投稿できます。
+
+    ★ タイトルの先頭に必ず「【PR】」を付けています。
+      楽天アフィリエイトのステマ規制対応ページで
+      「Xでは上部に、視認しやすく表記すること」と定められているためです。
+      ここは絶対に外さないでください。
+    """
+    base = SITE_URL.rstrip("/") + "/"
+    stamp = rfc822(now)
+
+    # --- ① ふつうのブログRSS ---
+    items = []
+    for p in posts[:20]:
+        url = f"{base}posts/{p['filename']}"
+        items.append(f"""<item>
+<title>{xesc(p['title'])}</title>
+<link>{xesc(url)}</link>
+<guid isPermaLink="true">{xesc(url)}</guid>
+<pubDate>{stamp}</pubDate>
+<description>{xesc(p.get('lead', ''))}</description>
+</item>""")
+    with open(os.path.join(DOCS_DIR, "feed.xml"), "w", encoding="utf-8") as f:
+        f.write(_rss(SITE_TITLE, SITE_DESCRIPTION, base, items, now))
+
+    # --- ② SNS投稿用RSS（記事と商品を交互に並べる）---
+    article_items, product_items = [], []
+    date_tag = now.strftime("%Y%m%d")
+
+    for post, prods in built:
+        if not prods:
+            continue
+        st = analyze(prods)
+        url = f"{base}posts/{post['filename']}"
+
+        # 記事の紹介文（数字を入れて「読む理由」を作る）
+        text = (f"【PR】{post['title']}\n"
+                f"最安 {yen(st['min_price'])}／中央値 {yen(st['median_price'])}"
+                + (f"／平均評価 {st['avg_rating']}" if st['avg_rating'] else "")
+                + f"　#{post['category']} #楽天")
+        article_items.append(f"""<item>
+<title>{xesc(text)}</title>
+<link>{xesc(url)}</link>
+<guid isPermaLink="false">article-{xesc(post['filename'])}-{date_tag}</guid>
+<pubDate>{stamp}</pubDate>
+<description>{xesc(post.get('lead', ''))}</description>
+</item>""")
+
+        # 注目商品（評価がいちばん高いもの。無ければ最安）を1件
+        pick = st["best_rated"] or st["cheapest"]
+        if pick:
+            ptext = (f"【PR】{shorten(pick['name'], 70)}\n"
+                     f"{yen(pick['price'])}"
+                     + (f"　★{pick['review_average']}（{int(pick['review_count']):,}件）"
+                        if pick.get("review_count") else "")
+                     + f"　#{post['category']} #楽天市場")
+            key = re.sub(r"[^0-9a-zA-Z]", "", pick["url"])[-24:]
+            product_items.append(f"""<item>
+<title>{xesc(ptext)}</title>
+<link>{xesc(pick['url'])}</link>
+<guid isPermaLink="false">item-{xesc(key)}-{date_tag}</guid>
+<pubDate>{stamp}</pubDate>
+<description>{xesc(shorten(pick.get('caption', ''), 140))}</description>
+</item>""")
+
+    # 記事→商品→記事→商品… の順に交互に差し込む
+    mixed = []
+    for a, b in zip(article_items, product_items):
+        mixed.append(a)
+        mixed.append(b)
+    mixed += article_items[len(product_items):]
+    mixed += product_items[len(article_items):]
+
+    with open(os.path.join(DOCS_DIR, "social.xml"), "w", encoding="utf-8") as f:
+        f.write(_rss(f"{SITE_TITLE}（SNS投稿用）",
+                     "SNSへの自動投稿に使うフィードです。", base, mixed, now))
+    print(f"  ✓ RSSを作りました（記事{len(items)}件 / SNS用{len(mixed)}件）")
+
+
 def write_sitemap(posts, now):
     """
     sitemap.xml を作る。
@@ -1096,12 +1269,13 @@ def main():
         print(f"  ※ ファイルが無くなっていた記事 {removed}件 を一覧から外しました。")
 
     known = {p["filename"] for p in posts}
+    built = []          # 今回作った (記事, 商品リスト) の組
     created = 0
     failed = 0
 
     for theme in THEMES:
         try:
-            post = build_one(theme, now, demo=demo)
+            post, items = build_one(theme, now, demo=demo)
         except Exception as e:
             failed += 1
             print(f"  ✗ エラーが起きました: {e}")
@@ -1109,6 +1283,7 @@ def main():
 
         if not post:
             continue
+        built.append((post, items))
 
         if post["filename"] in known:
             posts = [p for p in posts if p["filename"] != post["filename"]]
@@ -1125,6 +1300,7 @@ def main():
     with open(os.path.join(DOCS_DIR, "about.html"), "w", encoding="utf-8") as f:
         f.write(render_about())
     write_sitemap(posts, now)
+    write_feeds(posts, built, now)
     open(os.path.join(DOCS_DIR, ".nojekyll"), "w").close()
 
     save_posts(posts)
