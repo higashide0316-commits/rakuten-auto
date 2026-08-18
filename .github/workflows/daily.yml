@@ -40,7 +40,7 @@ jobs:
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           # 楽天のアプリ登録で「許可ウェブサイト」に入れたURLと同じものを入れる
           RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
-        run: python scripts/generate.py
+        run: python generate.py
 
       # 4. できた記事をリポジトリに保存して公開する
       - name: 変更をコミット
