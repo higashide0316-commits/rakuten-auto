@@ -1,0 +1,56 @@
+name: 記事を自動生成して公開
+
+# ============================================================
+#  いつ動かすか
+# ============================================================
+on:
+  schedule:
+    # 毎日 07:00（日本時間）に実行します。
+    # GitHub は世界標準時(UTC)で動くので、日本時間から9時間引いた値を書きます。
+    #   日本 07:00 → UTC 22:00（前日）
+    - cron: "0 22 * * *"
+
+  # GitHubの画面の「Run workflow」ボタンから手動でも動かせるようにする
+  workflow_dispatch:
+
+# リポジトリにファイルを書き込む権限を与える（これが無いとコミットできません）
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. リポジトリの中身を取ってくる
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      # 2. Python を用意する
+      - name: Python を準備
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 3. 記事を作る
+      - name: 記事を生成
+        env:
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          # 楽天のアプリ登録で「許可ウェブサイト」に入れたURLと同じものを入れる
+          RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
+        run: python scripts/generate.py
+
+      # 4. できた記事をリポジトリに保存して公開する
+      - name: 変更をコミット
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs data
+          if git diff --staged --quiet; then
+            echo "変更がなかったので、何もしませんでした。"
+          else
+            git commit -m "記事を自動生成: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
+            git push
+          fi
