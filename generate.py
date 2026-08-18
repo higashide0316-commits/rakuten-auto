@@ -34,7 +34,10 @@ import urllib.request
 
 # --- ブログの名前と説明 ---------------------------------------------
 SITE_TITLE = "楽天うれすじ速報"
-SITE_DESCRIPTION = "楽天市場の売れ筋ランキングと、ゴルフ用品・ハーレー用品のおすすめを毎日自動でお届けします。"
+SITE_DESCRIPTION = "楽天市場の公式データを毎日自動集計。売れ筋ランキングと価格帯の傾向を、価格・評価・レビュー数で比較できる形にまとめています。"
+
+# サイトのアドレス（sitemap.xml を作るのに使います）
+SITE_URL = "https://k-ranklab.github.io/"
 
 # トップページに並べる記事の数
 TOP_PAGE_ARTICLE_COUNT = 30
@@ -321,98 +324,179 @@ def fetch_search(keyword, genre_id=0, hits=10, sort="-reviewCount"):
 
 CSS = """
 :root{
-  --bg:#0f1115; --card:#171a21; --line:#252a34;
-  --text:#e8eaed; --muted:#9aa3af; --accent:#e8384f; --accent2:#ffb020;
-}
-@media (prefers-color-scheme: light){
-  :root{ --bg:#f7f8fa; --card:#ffffff; --line:#e4e7ec;
-         --text:#1a1d23; --muted:#61697a; }
+  --bg:#f4f6f8; --card:#ffffff; --line:#e2e7ee; --line2:#eef2f6;
+  --text:#1b2027; --muted:#5d6874; --price:#c62828;
+  --link:#1462b8; --gold:#b8860b; --ok:#0f7b52;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.10);
 }
 *{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
 body{
   margin:0; background:var(--bg); color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",
               "Yu Gothic UI",Meiryo,sans-serif;
-  line-height:1.75; -webkit-text-size-adjust:100%;
+  line-height:1.8; font-size:16px; -webkit-text-size-adjust:100%;
 }
-.wrap{max-width:760px; margin:0 auto; padding:0 16px 64px;}
-header.site{
-  border-bottom:1px solid var(--line); background:var(--card);
-  padding:20px 16px; margin-bottom:24px;
-}
-header.site .inner{max-width:760px; margin:0 auto;}
-header.site h1{margin:0; font-size:20px; letter-spacing:.02em;}
-header.site h1 a{color:var(--text); text-decoration:none;}
-header.site p{margin:6px 0 0; color:var(--muted); font-size:13px;}
-.pr{
-  display:inline-block; margin:12px 0 0; padding:4px 10px; border-radius:999px;
-  background:rgba(232,56,79,.12); color:var(--accent);
-  font-size:11px; font-weight:700; letter-spacing:.04em;
-}
-h2.article-title{font-size:22px; line-height:1.5; margin:8px 0 4px;}
-.meta{color:var(--muted); font-size:12px; margin-bottom:20px;}
-.badge{
-  display:inline-block; padding:2px 8px; border-radius:4px;
-  background:var(--line); color:var(--muted); font-size:11px; margin-right:8px;
-}
-.lead{
-  background:var(--card); border:1px solid var(--line); border-left:3px solid var(--accent);
-  border-radius:8px; padding:14px 16px; font-size:14px; margin-bottom:28px;
-}
-.item{
-  background:var(--card); border:1px solid var(--line); border-radius:12px;
-  padding:16px; margin-bottom:18px; display:flex; gap:14px;
-}
-@media (max-width:520px){ .item{flex-direction:column;} }
-.item .thumb{
-  flex:0 0 132px; width:132px; height:132px; border-radius:8px; overflow:hidden;
-  background:var(--line); display:flex; align-items:center; justify-content:center;
-}
-@media (max-width:520px){ .item .thumb{width:100%; height:200px; flex:none;} }
-.item .thumb img{width:100%; height:100%; object-fit:contain;}
-.item .body{flex:1 1 auto; min-width:0;}
-.rank{
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width:26px; height:26px; padding:0 7px; border-radius:6px;
-  background:var(--accent); color:#fff; font-weight:800; font-size:13px;
-  margin-right:8px;
-}
-.rank.gold{background:linear-gradient(135deg,#f6c94a,#d99a12); color:#3a2b00;}
-.rank.silver{background:linear-gradient(135deg,#d7dbe2,#a6adb8); color:#2a2f38;}
-.rank.bronze{background:linear-gradient(135deg,#d9a273,#a8703c); color:#2f1c08;}
-.item h3{font-size:15px; margin:0 0 8px; line-height:1.5; font-weight:600;}
-.item h3 a{color:var(--text); text-decoration:none;}
-.item h3 a:hover{color:var(--accent);}
-.price{font-size:19px; font-weight:800; color:var(--accent); margin:0 0 6px;}
-.price small{font-size:12px; font-weight:600; color:var(--muted); margin-left:4px;}
-.sub{font-size:12px; color:var(--muted); margin:0 0 4px;}
-.stars{color:var(--accent2); letter-spacing:1px;}
-.desc{font-size:13px; color:var(--muted); margin:8px 0 12px;}
-.btn{
-  display:inline-block; padding:10px 18px; border-radius:8px;
-  background:var(--accent); color:#fff !important; text-decoration:none;
-  font-weight:700; font-size:14px;
-}
-.btn:hover{opacity:.88;}
+a{color:var(--link);}
+.wrap{max-width:800px; margin:0 auto; padding:0 16px 72px;}
+
+/* ---- ヘッダー ---- */
+header.site{background:#fff; border-bottom:1px solid var(--line); padding:16px;}
+header.site .inner{max-width:800px; margin:0 auto;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+header.site .logo{font-size:19px; font-weight:800; letter-spacing:.01em;
+  color:var(--text); text-decoration:none; margin:0;}
+header.site .tag{font-size:12px; color:var(--muted); margin:0; width:100%;}
+.pr-bar{background:#fff8e1; border-bottom:1px solid #f0e2b6;
+  color:#7a5b00; font-size:11.5px; padding:6px 16px; text-align:center;}
+
+/* ---- パンくず ---- */
+.crumbs{font-size:12px; color:var(--muted); margin:16px 0 10px;}
+.crumbs a{color:var(--muted); text-decoration:none;}
+.crumbs a:hover{color:var(--link); text-decoration:underline;}
+
+/* ---- 見出し ---- */
+h1.article-title{font-size:25px; line-height:1.5; margin:6px 0 10px; font-weight:800;
+  letter-spacing:-.01em;}
+h2.sec{font-size:19px; margin:38px 0 14px; padding-left:11px;
+  border-left:4px solid var(--link); line-height:1.5;}
+.meta{color:var(--muted); font-size:12.5px; margin:0 0 22px;
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+.chip{display:inline-block; padding:2px 9px; border-radius:99px;
+  background:#eaf1fb; color:#1a5fae; font-size:11.5px; font-weight:700;}
+
+/* ---- 結論ボックス ---- */
+.verdict{background:#fff; border:1px solid var(--line); border-radius:12px;
+  padding:18px 18px 6px; box-shadow:var(--shadow); margin-bottom:26px;}
+.verdict h2{font-size:16px; margin:0 0 14px; padding:0; border:0;
+  display:flex; align-items:center; gap:8px;}
+.verdict h2::before{content:"✓"; display:inline-flex; align-items:center;
+  justify-content:center; width:20px; height:20px; border-radius:50%;
+  background:var(--ok); color:#fff; font-size:12px; font-weight:700;}
+.vrow{display:flex; gap:12px; padding:11px 0; border-top:1px solid var(--line2);
+  font-size:14px; align-items:flex-start;}
+.vrow:first-of-type{border-top:0;}
+.vlabel{flex:0 0 108px; color:var(--muted); font-size:12.5px; font-weight:700;
+  padding-top:2px;}
+.vbody{flex:1 1 auto; min-width:0;}
+.vbody a{font-weight:700; text-decoration:none;}
+.vbody a:hover{text-decoration:underline;}
+.vbody .p{color:var(--price); font-weight:800; margin-left:6px; white-space:nowrap;}
+
+/* ---- 目次 ---- */
+.toc{background:#fff; border:1px solid var(--line); border-radius:12px;
+  padding:14px 18px; margin-bottom:28px; box-shadow:var(--shadow);}
+.toc p{margin:0 0 8px; font-weight:800; font-size:14px;}
+.toc ol{margin:0; padding-left:20px; font-size:14px;}
+.toc li{margin:3px 0;}
+.toc a{text-decoration:none;}
+.toc a:hover{text-decoration:underline;}
+
+/* ---- データサマリー ---- */
+.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:8px;}
+@media (max-width:560px){ .stats{grid-template-columns:repeat(2,1fr);} }
+.stat{background:#fff; border:1px solid var(--line); border-radius:10px;
+  padding:13px 12px; text-align:center; box-shadow:var(--shadow);}
+.stat .k{font-size:11px; color:var(--muted); margin:0 0 4px; font-weight:700;}
+.stat .v{font-size:18px; font-weight:800; margin:0; letter-spacing:-.02em;}
+.stat .s{font-size:10.5px; color:var(--muted); margin:2px 0 0;}
+.note{font-size:12px; color:var(--muted); margin:10px 0 0;}
+
+/* ---- 比較表 ---- */
+.tablewrap{overflow-x:auto; -webkit-overflow-scrolling:touch;
+  border:1px solid var(--line); border-radius:12px; background:#fff;
+  box-shadow:var(--shadow);}
+table.cmp{border-collapse:collapse; width:100%; font-size:13.5px; min-width:560px;}
+table.cmp th,table.cmp td{padding:11px 12px; text-align:left;
+  border-bottom:1px solid var(--line2); vertical-align:middle;}
+table.cmp thead th{background:#f7f9fc; font-size:12px; color:var(--muted);
+  font-weight:700; white-space:nowrap;}
+table.cmp tbody tr:last-child td{border-bottom:0;}
+table.cmp td.name{min-width:230px;}
+table.cmp td.name a{color:var(--text); text-decoration:none; font-weight:600;}
+table.cmp td.name a:hover{color:var(--link); text-decoration:underline;}
+table.cmp td.pr{color:var(--price); font-weight:800; white-space:nowrap;}
+table.cmp td.num{white-space:nowrap;}
+
+/* ---- 商品カード ---- */
+.item{background:#fff; border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin-bottom:16px; box-shadow:var(--shadow);}
+.ihead{display:flex; gap:10px; align-items:flex-start; margin-bottom:12px;}
+.rank{flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+  min-width:30px; height:30px; padding:0 9px; border-radius:8px;
+  background:#eef2f7; color:#3d4a5c; font-weight:800; font-size:14px;}
+.rank.gold{background:linear-gradient(135deg,#f7d774,#d4a017); color:#4a3500;}
+.rank.silver{background:linear-gradient(135deg,#dfe4ea,#adb5bd); color:#2f3640;}
+.rank.bronze{background:linear-gradient(135deg,#e0aa7e,#b07642); color:#3b2408;}
+.ihead h3{font-size:16px; margin:2px 0 0; line-height:1.55; font-weight:700;}
+.ihead h3 a{color:var(--text); text-decoration:none;}
+.ihead h3 a:hover{color:var(--link); text-decoration:underline;}
+.ibody{display:flex; gap:16px;}
+@media (max-width:560px){ .ibody{flex-direction:column;} }
+.thumb{flex:0 0 150px; width:150px; height:150px; border-radius:10px;
+  border:1px solid var(--line2); background:#fafbfc; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;}
+@media (max-width:560px){ .thumb{width:100%; height:210px; flex:none;} }
+.thumb img{width:100%; height:100%; object-fit:contain;}
+.info{flex:1 1 auto; min-width:0;}
+.badges{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px;}
+.badge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:5px;
+  border:1px solid transparent; white-space:nowrap;}
+.b-cheap{background:#e8f6ef; color:#0f7b52; border-color:#bfe6d5;}
+.b-star{background:#fff5e0; color:#a06800; border-color:#f2dfae;}
+.b-rev{background:#eaf1fb; color:#1a5fae; border-color:#cadff5;}
+.b-ship{background:#f2f0fb; color:#5b47b5; border-color:#ddd7f3;}
+.b-pt{background:#fdeef0; color:#b3283a; border-color:#f7ccd3;}
+.price{font-size:23px; font-weight:800; color:var(--price); margin:0 0 8px;
+  letter-spacing:-.02em;}
+.price .tax{font-size:12px; font-weight:600; color:var(--muted); margin-left:5px;}
+.spec{list-style:none; margin:0 0 12px; padding:0; font-size:13px;}
+.spec li{display:flex; gap:8px; padding:4px 0; border-bottom:1px dashed var(--line2);}
+.spec li:last-child{border-bottom:0;}
+.spec .sk{flex:0 0 78px; color:var(--muted); font-size:12px;}
+.spec .sv{flex:1 1 auto; min-width:0;}
+.stars{color:#f0a500; letter-spacing:.5px;}
+.desc{font-size:13px; color:var(--muted); margin:0 0 14px; line-height:1.75;}
+.btn{display:inline-block; padding:12px 26px; border-radius:8px;
+  background:var(--price); color:#fff !important; text-decoration:none;
+  font-weight:800; font-size:15px; box-shadow:0 2px 5px rgba(198,40,40,.28);}
+.btn:hover{filter:brightness(1.07);}
+.btnnote{font-size:11px; color:var(--muted); margin:8px 0 0;}
+
+/* ---- 一覧 ---- */
+.hero{background:#fff; border:1px solid var(--line); border-radius:12px;
+  padding:22px; margin:18px 0 26px; box-shadow:var(--shadow);}
+.hero h1{margin:0 0 8px; font-size:21px; line-height:1.5;}
+.hero p{margin:0; font-size:14px; color:var(--muted);}
 ul.posts{list-style:none; padding:0; margin:0;}
-ul.posts li{
-  background:var(--card); border:1px solid var(--line); border-radius:10px;
-  padding:14px 16px; margin-bottom:12px;
-}
-ul.posts a{color:var(--text); text-decoration:none; font-weight:600; font-size:15px;}
-ul.posts a:hover{color:var(--accent);}
-footer.site{
-  margin-top:48px; padding-top:20px; border-top:1px solid var(--line);
-  color:var(--muted); font-size:12px;
-}
-.back{display:inline-block; margin-bottom:16px; color:var(--muted);
-      font-size:13px; text-decoration:none;}
-.back:hover{color:var(--accent);}
+ul.posts li{background:#fff; border:1px solid var(--line); border-radius:12px;
+  padding:16px 18px; margin-bottom:12px; box-shadow:var(--shadow);}
+ul.posts a{color:var(--text); text-decoration:none; font-weight:700; font-size:15.5px;
+  line-height:1.55; display:block;}
+ul.posts a:hover{color:var(--link); text-decoration:underline;}
+ul.posts .meta{margin:8px 0 0;}
+
+/* ---- フッター ---- */
+footer.site{margin-top:56px; padding:22px 0 0; border-top:1px solid var(--line);
+  color:var(--muted); font-size:12.5px; line-height:1.85;}
+footer.site a{color:var(--muted);}
+footer.site .fnav{margin:0 0 12px;}
+footer.site .fnav a{margin-right:14px;}
+.prose h2{font-size:18px; margin:30px 0 10px; padding-left:11px;
+  border-left:4px solid var(--link);}
+.prose p,.prose li{font-size:14px; color:#333b45;}
 """
 
 
 def esc(text):
     return html.escape(str(text if text is not None else ""))
+
+
+def yen(n):
+    try:
+        return f"{int(n):,}円"
+    except (TypeError, ValueError):
+        return "―"
 
 
 def stars(average):
@@ -425,39 +509,123 @@ def stars(average):
         return ""
     full = int(a)
     half = 1 if a - full >= 0.5 else 0
-    return "★" * full + ("☆" if half else "") + "・" * (5 - full - half)
+    return "★" * full + ("☆" if half else "") + "☆" * (5 - full - half)
 
 
 def rank_class(i):
     return {1: "rank gold", 2: "rank silver", 3: "rank bronze"}.get(i, "rank")
 
 
-def page_shell(title, body_html, is_top=False):
-    """全ページ共通の外枠"""
+def shorten(text, n):
+    text = (text or "").strip()
+    return text if len(text) <= n else text[:n] + "…"
+
+
+# =====================================================================
+#  データ分析（ここが「独自の付加価値」になる部分）
+# =====================================================================
+
+def analyze(items):
+    """
+    取得した商品データを集計して、読者の判断材料を作る。
+
+    単に商品を並べるだけでなく、「価格帯はどのあたりか」
+    「どれが一番安いか」「どれが一番評価されているか」を
+    数字で示すことで、ページに独自の意味が生まれます。
+    """
+    prices = sorted([int(i["price"]) for i in items if i.get("price")])
+    reviewed = [i for i in items if (i.get("review_count") or 0) >= 3
+                and (i.get("review_average") or 0) > 0]
+
+    median = 0
+    if prices:
+        m = len(prices) // 2
+        median = prices[m] if len(prices) % 2 else (prices[m - 1] + prices[m]) // 2
+
+    avg_rating = 0.0
+    if reviewed:
+        avg_rating = round(sum(float(i["review_average"]) for i in reviewed) / len(reviewed), 2)
+
+    free_ship = sum(1 for i in items if i.get("postage_flag") == 0)
+
+    def pick(seq, key, reverse=True):
+        seq = [x for x in seq if x.get(key)]
+        return sorted(seq, key=lambda x: x[key], reverse=reverse)[0] if seq else None
+
+    return {
+        "count": len(items),
+        "min_price": prices[0] if prices else 0,
+        "max_price": prices[-1] if prices else 0,
+        "median_price": median,
+        "avg_rating": avg_rating,
+        "rated_count": len(reviewed),
+        "free_ship": free_ship,
+        "cheapest": pick(items, "price", reverse=False),
+        "best_rated": pick(reviewed, "review_average"),
+        "most_reviewed": pick(items, "review_count"),
+    }
+
+
+def make_badges(item, stats):
+    """データから機械的に判断できるバッジを付ける"""
+    out = []
+    # 「is」で比べているのは、同じ商品オブジェクトかどうかを厳密に見るためです。
+    # URLや商品名で比べると、似た商品に同じバッジが付いてしまいます。
+    if item is stats["cheapest"]:
+        out.append(('b-cheap', 'この中で最安'))
+    if item is stats["best_rated"]:
+        out.append(('b-star', 'レビュー評価が最高'))
+    if item is stats["most_reviewed"]:
+        out.append(('b-rev', 'レビュー数が最多'))
+    if item.get("postage_flag") == 0:
+        out.append(('b-ship', '送料込み'))
+    try:
+        if int(item.get("point_rate") or 1) > 1:
+            out.append(('b-pt', f'ポイント{int(item["point_rate"])}倍'))
+    except (TypeError, ValueError):
+        pass
+    return out
+
+
+# =====================================================================
+#  ページ組み立て
+# =====================================================================
+
+def page_shell(title, body_html, is_top=False, description=None, extra_head=""):
     prefix = "" if is_top else "../"
+    desc = description or SITE_DESCRIPTION
     return f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{esc(title)}</title>
-<meta name="description" content="{esc(SITE_DESCRIPTION)}">
+<meta name="description" content="{esc(shorten(desc, 120))}">
+<meta property="og:title" content="{esc(title)}">
+<meta property="og:description" content="{esc(shorten(desc, 120))}">
+<meta property="og:type" content="{'website' if is_top else 'article'}">
 <link rel="stylesheet" href="{prefix}style.css">
+{extra_head}
 </head>
 <body>
+<div class="pr-bar">{esc(PR_NOTICE)}</div>
 <header class="site">
   <div class="inner">
-    <h1><a href="{prefix}index.html">{esc(SITE_TITLE)}</a></h1>
-    <p>{esc(SITE_DESCRIPTION)}</p>
-    <span class="pr">PR</span>
+    <a class="logo" href="{prefix}index.html">{esc(SITE_TITLE)}</a>
+    <p class="tag">{esc(SITE_DESCRIPTION)}</p>
   </div>
 </header>
 <div class="wrap">
 {body_html}
 <footer class="site">
-  <p>{esc(PR_NOTICE)}</p>
-  <p>掲載している価格・ポイント・在庫状況は記事の作成時点のものです。
-     最新の情報は必ず楽天市場の商品ページでご確認ください。</p>
+  <p class="fnav">
+    <a href="{prefix}index.html">ホーム</a>
+    <a href="{prefix}about.html">このサイトについて</a>
+  </p>
+  <p>{esc(PR_NOTICE)}当サイトは楽天ウェブサービスのAPIを利用して、
+     楽天市場の公開データを自動で集計・掲載しています。</p>
+  <p>掲載している価格・ポイント・送料・在庫状況は、記事の作成時点のものです。
+     商品の購入前には、必ずリンク先の楽天市場の商品ページで最新の情報をご確認ください。</p>
   <p>&copy; {esc(SITE_TITLE)}</p>
 </footer>
 </div>
@@ -468,66 +636,228 @@ def page_shell(title, body_html, is_top=False):
 
 def render_article(post, items):
     """記事1本分のHTMLを作る"""
-    parts = ['<a class="back" href="../index.html">&larr; 記事一覧にもどる</a>',
-             f'<h2 class="article-title">{esc(post["title"])}</h2>',
-             f'<p class="meta"><span class="badge">{esc(post["category"])}</span>'
-             f'{esc(post["created_at"])} 更新</p>',
-             f'<div class="lead">{esc(post["lead"])}</div>']
+    st = analyze(items)
+    p = []
 
+    p.append('<nav class="crumbs"><a href="../index.html">ホーム</a> ／ '
+             f'{esc(post["category"])}</nav>')
+    p.append(f'<h1 class="article-title">{esc(post["title"])}</h1>')
+    p.append(f'<p class="meta"><span class="chip">{esc(post["category"])}</span>'
+             f'<span>{esc(post["created_at"])} 時点のデータ</span>'
+             f'<span>掲載 {st["count"]}件</span></p>')
+
+    # --- 結論ボックス（このページの要点を先に示す）---
+    def vrow(label, it, extra=""):
+        if not it:
+            return ""
+        return (f'<div class="vrow"><div class="vlabel">{label}</div>'
+                f'<div class="vbody"><a href="{esc(it["url"])}" target="_blank" '
+                f'rel="nofollow sponsored noopener">{esc(shorten(it["name"], 46))}</a>'
+                f'<span class="p">{esc(yen(it["price"]))}</span>{extra}</div></div>')
+
+    br = st["best_rated"]
+    mr = st["most_reviewed"]
+    p.append('<div class="verdict"><h2>このページの要点</h2>'
+             + vrow("いちばん安い", st["cheapest"])
+             + vrow("評価がいちばん高い", br,
+                    f'<span style="color:#a06800;font-size:12.5px;margin-left:6px">'
+                    f'★{esc(br["review_average"])}</span>' if br else "")
+             + vrow("レビューが最多", mr,
+                    f'<span style="color:var(--muted);font-size:12.5px;margin-left:6px">'
+                    f'{int(mr["review_count"]):,}件</span>' if mr else "")
+             + '</div>')
+
+    # --- 目次 ---
+    p.append('<div class="toc"><p>目次</p><ol>'
+             '<li><a href="#data">データで見る価格帯と評価</a></li>'
+             '<li><a href="#cmp">上位商品の比較表</a></li>'
+             '<li><a href="#list">商品ごとの詳細</a></li>'
+             '<li><a href="#howto">このページの見方・注意点</a></li>'
+             '</ol></div>')
+
+    # --- データサマリー ---
+    p.append('<h2 class="sec" id="data">データで見る価格帯と評価</h2>')
+    p.append(f"""<div class="stats">
+  <div class="stat"><p class="k">最安値</p><p class="v">{esc(yen(st["min_price"]))}</p></div>
+  <div class="stat"><p class="k">中央値</p><p class="v">{esc(yen(st["median_price"]))}</p>
+    <p class="s">ちょうど真ん中の価格</p></div>
+  <div class="stat"><p class="k">最高値</p><p class="v">{esc(yen(st["max_price"]))}</p></div>
+  <div class="stat"><p class="k">平均評価</p>
+    <p class="v">{esc(st["avg_rating"]) if st["avg_rating"] else "―"}</p>
+    <p class="s">レビュー3件以上 {st["rated_count"]}商品</p></div>
+</div>""")
+    p.append(f'<p class="note">掲載{st["count"]}件のうち、'
+             f'<strong>{st["free_ship"]}件が送料込み</strong>です。'
+             f'価格の中央値は{esc(yen(st["median_price"]))}なので、'
+             f'これより安ければ「この中では割安」、高ければ「上位モデル寄り」と判断できます。</p>')
+
+    # --- 比較表 ---
+    p.append('<h2 class="sec" id="cmp">上位商品の比較表</h2>')
+    rows = []
+    for i, it in enumerate(items[:5], start=1):
+        rv = (f'<span class="stars">{stars(it["review_average"])}</span> {esc(it["review_average"])}'
+              if it.get("review_count") else '<span style="color:#9aa3af">―</span>')
+        rc = f'{int(it["review_count"]):,}件' if it.get("review_count") else "―"
+        sp = "込み" if it.get("postage_flag") == 0 else "別"
+        rows.append(f'<tr><td class="num"><strong>{i}</strong></td>'
+                    f'<td class="name"><a href="{esc(it["url"])}" target="_blank" '
+                    f'rel="nofollow sponsored noopener">{esc(shorten(it["name"], 42))}</a></td>'
+                    f'<td class="pr">{esc(yen(it["price"]))}</td>'
+                    f'<td class="num">{rv}</td><td class="num">{rc}</td>'
+                    f'<td class="num">{sp}</td></tr>')
+    p.append('<div class="tablewrap"><table class="cmp"><thead><tr>'
+             '<th>順位</th><th>商品名</th><th>価格</th><th>評価</th>'
+             '<th>レビュー</th><th>送料</th></tr></thead><tbody>'
+             + "".join(rows) + '</tbody></table></div>')
+    p.append('<p class="note">※ 横にスクロールできます。順位は楽天市場のランキング／'
+             'レビュー数にもとづく並び順です。</p>')
+
+    # --- 商品詳細 ---
+    p.append('<h2 class="sec" id="list">商品ごとの詳細</h2>')
     for i, it in enumerate(items, start=1):
         rank_no = it.get("rank") or i
         img = (f'<div class="thumb"><img src="{esc(it["image"])}" '
-               f'alt="{esc(it["name"])[:60]}" loading="lazy"></div>'
+               f'alt="{esc(shorten(it["name"], 60))}" loading="lazy"></div>'
                if it.get("image") else '<div class="thumb"></div>')
 
-        price = f'{int(it["price"]):,}円' if it.get("price") else "価格は商品ページで確認"
-        point = ""
-        try:
-            if int(it.get("point_rate") or 1) > 1:
-                point = f'<small>ポイント{int(it["point_rate"])}倍</small>'
-        except (TypeError, ValueError):
-            pass
+        badges = "".join(f'<span class="badge {c}">{esc(t)}</span>'
+                         for c, t in make_badges(it, st))
+        badges = f'<div class="badges">{badges}</div>' if badges else ""
 
-        review = ""
+        specs = []
         if it.get("review_count"):
-            review = (f'<p class="sub"><span class="stars">{stars(it["review_average"])}</span> '
-                      f'{esc(it["review_average"])}（{int(it["review_count"]):,}件のレビュー）</p>')
+            specs.append('<li><span class="sk">レビュー</span><span class="sv">'
+                         f'<span class="stars">{stars(it["review_average"])}</span> '
+                         f'{esc(it["review_average"])}（{int(it["review_count"]):,}件）</span></li>')
+        specs.append(f'<li><span class="sk">ショップ</span>'
+                     f'<span class="sv">{esc(it["shop"])}</span></li>')
+        specs.append('<li><span class="sk">送料</span><span class="sv">'
+                     + ("商品価格に含まれています" if it.get("postage_flag") == 0
+                        else "別途かかります（商品ページで確認）") + '</span></li>')
+        if st["median_price"] and it.get("price"):
+            diff = int(it["price"]) - st["median_price"]
+            judge = ("この中では割安" if diff < 0 else
+                     "この中では高め" if diff > 0 else "ちょうど中央値")
+            specs.append(f'<li><span class="sk">価格の位置</span><span class="sv">'
+                         f'{judge}（中央値との差 {"+" if diff>0 else ""}{diff:,}円）</span></li>')
 
-        desc = it.get("caption", "")
-        if len(desc) > 110:
-            desc = desc[:110] + "…"
-
-        parts.append(f"""<div class="item">
-  {img}
-  <div class="body">
-    <h3><span class="{rank_class(i)}">{esc(rank_no)}</span>
-        <a href="{esc(it["url"])}" target="_blank" rel="nofollow sponsored noopener">{esc(it["name"])}</a></h3>
-    <p class="price">{esc(price)}{point}</p>
-    <p class="sub">ショップ: {esc(it["shop"])}</p>
-    {review}
-    <p class="desc">{esc(desc)}</p>
-    <a class="btn" href="{esc(it["url"])}" target="_blank" rel="nofollow sponsored noopener">楽天市場で見る</a>
+        parts_html = f"""<div class="item">
+  <div class="ihead"><span class="{rank_class(i)}">{esc(rank_no)}</span>
+    <h3><a href="{esc(it["url"])}" target="_blank"
+        rel="nofollow sponsored noopener">{esc(it["name"])}</a></h3></div>
+  <div class="ibody">
+    {img}
+    <div class="info">
+      {badges}
+      <p class="price">{esc(yen(it["price"]))}<span class="tax">税込・楽天市場</span></p>
+      <ul class="spec">{"".join(specs)}</ul>
+      <p class="desc">{esc(shorten(it.get("caption", ""), 130))}</p>
+      <a class="btn" href="{esc(it["url"])}" target="_blank"
+         rel="nofollow sponsored noopener">楽天市場で価格を見る</a>
+      <p class="btnnote">※ 楽天市場の商品ページが開きます（アフィリエイトリンク）</p>
+    </div>
   </div>
+</div>"""
+        p.append(parts_html)
+
+    # --- 見方・注意点 ---
+    p.append('<h2 class="sec" id="howto">このページの見方・注意点</h2>')
+    p.append(f"""<div class="prose">
+<p>このページは、<strong>楽天ウェブサービスが提供する公式データ</strong>をもとに、
+{esc(post["created_at"])}時点の情報を自動で集計して作成しています。
+掲載順は楽天市場のランキング、またはレビュー数の多い順です。</p>
+<p><strong>バッジの意味</strong>：「この中で最安」「レビュー評価が最高」「レビュー数が最多」は、
+このページに掲載している{st["count"]}件の中での比較です。楽天市場全体での比較ではありません。
+評価の比較は、判断の精度を上げるためレビューが3件以上ある商品のみを対象にしています。</p>
+<p><strong>価格について</strong>：楽天市場の価格は頻繁に変動します。クーポンやポイント還元、
+セール期間によって実質的な負担額も変わります。表示価格はあくまで取得時点のもので、
+購入前に必ずリンク先でご確認ください。</p>
+<p><strong>送料について</strong>：「送料込み」はデータ上の表記であり、
+地域や配送方法によって異なる場合があります。</p>
 </div>""")
 
-    return page_shell(post["title"], "\n".join(parts))
+    # --- 構造化データ（Googleに内容を正しく伝える）---
+    ld = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": post["title"],
+        "numberOfItems": len(items),
+        "itemListElement": [
+            {"@type": "ListItem", "position": i,
+             "name": shorten(it["name"], 90), "url": it["url"]}
+            for i, it in enumerate(items, start=1)
+        ],
+    }
+    head = ('<script type="application/ld+json">'
+            + json.dumps(ld, ensure_ascii=False) + '</script>')
+
+    return page_shell(post["title"], "\n".join(p),
+                      description=post["lead"], extra_head=head)
 
 
 def render_index(posts):
-    """トップページ（記事一覧）のHTMLを作る"""
-    if not posts:
-        return page_shell(SITE_TITLE, "<p>まだ記事がありません。</p>", is_top=True)
+    """トップページ（記事一覧）"""
+    body = [f"""<div class="hero">
+  <h1>{esc(SITE_TITLE)}</h1>
+  <p>楽天市場の公式データ（楽天ウェブサービスAPI）を毎日自動で集計し、
+     売れ筋ランキングと価格帯の傾向をまとめています。
+     価格・評価・レビュー数・送料を並べて比較できる形にしているので、
+     商品選びの下調べにお使いください。</p>
+</div>"""]
 
+    if not posts:
+        body.append("<p>まだ記事がありません。</p>")
+        return page_shell(SITE_TITLE, "\n".join(body), is_top=True)
+
+    body.append('<h2 class="sec">最新の記事</h2>')
     lis = []
     for p in posts[:TOP_PAGE_ARTICLE_COUNT]:
-        lis.append(
-            f'<li><a href="posts/{esc(p["filename"])}">{esc(p["title"])}</a>'
-            f'<div class="meta" style="margin:6px 0 0">'
-            f'<span class="badge">{esc(p["category"])}</span>{esc(p["created_at"])}</div></li>'
-        )
-    body = ('<h2 class="article-title">最新の記事</h2>\n<ul class="posts">\n'
-            + "\n".join(lis) + "\n</ul>")
-    return page_shell(SITE_TITLE, body, is_top=True)
+        lis.append(f'<li><a href="posts/{esc(p["filename"])}">{esc(p["title"])}</a>'
+                   f'<p class="meta"><span class="chip">{esc(p["category"])}</span>'
+                   f'<span>{esc(p["created_at"])}</span>'
+                   f'<span>{esc(p.get("item_count", ""))}件掲載</span></p></li>')
+    body.append('<ul class="posts">' + "".join(lis) + '</ul>')
+    return page_shell(SITE_TITLE, "\n".join(body), is_top=True)
+
+
+def render_about():
+    """このサイトについて（運営方針・免責・データ出典）"""
+    body = f"""<nav class="crumbs"><a href="index.html">ホーム</a> ／ このサイトについて</nav>
+<h1 class="article-title">このサイトについて</h1>
+<div class="prose">
+<h2>サイトの目的</h2>
+<p>{esc(SITE_TITLE)}は、楽天市場でいま実際によく売れている商品と、
+そのジャンルの価格帯・評価の傾向を、データにもとづいて分かりやすくまとめるサイトです。
+「なんとなく高い・安い」ではなく、最安値・中央値・平均評価といった数字で
+判断できる形にすることを目指しています。</p>
+
+<h2>データの出典と更新頻度</h2>
+<p>掲載している商品情報（商品名・価格・レビュー評価・レビュー件数・送料区分・
+ポイント倍率・画像）は、すべて楽天グループが提供する
+<a href="https://webservice.rakuten.co.jp/" target="_blank" rel="noopener">楽天ウェブサービス</a>
+の公式APIから取得しています。データは毎日自動で更新しています。</p>
+
+<h2>掲載順の基準</h2>
+<p>ランキング記事は楽天市場のリアルタイムランキングの順位、
+キーワード別の記事はレビュー件数の多い順で掲載しています。
+順位を金銭で操作することは一切ありません。</p>
+
+<h2>広告について</h2>
+<p>当サイトは楽天アフィリエイトを利用しており、
+リンク経由で商品が購入された場合、運営者に紹介料が支払われます。
+紹介料の有無や料率が、掲載順や商品の選定に影響することはありません。</p>
+
+<h2>免責事項</h2>
+<p>掲載情報の正確性には努めていますが、価格・在庫・送料・ポイント倍率は
+記事作成時点のものであり、変動します。購入の判断は、必ずリンク先の
+楽天市場の商品ページで最新情報をご確認のうえ、ご自身の責任で行ってください。
+当サイトの情報にもとづく損害について、運営者は責任を負いかねます。</p>
+
+<h2>お問い合わせ</h2>
+<p>掲載内容に関するご指摘は、GitHub のリポジトリ経由でお願いします。</p>
+</div>"""
+    return page_shell(f"このサイトについて｜{SITE_TITLE}", body, is_top=True,
+                      description=f"{SITE_TITLE}の運営方針・データ出典・免責事項について。")
 
 
 # ---------------------------------------------------------------------
@@ -565,7 +895,7 @@ def make_demo_items(n, label):
         "rank": i,
         "name": f"【サンプル】{label} おすすめ商品 その{i}（これはテスト表示です）",
         "price": 3980 + i * 1200,
-        "url": "https://example.com/",
+        "url": f"https://example.com/item{i}",
         "image": "",
         "shop": f"サンプルショップ{i}",
         "review_count": 120 - i * 7,
@@ -679,6 +1009,32 @@ def run_check():
     return 0
 
 
+def write_sitemap(posts, now):
+    """
+    sitemap.xml を作る。
+
+    Googleに「このサイトにはこういうページがありますよ」と伝える地図です。
+    新しい記事を早く見つけてもらうために出しておきます。
+    """
+    base = SITE_URL.rstrip("/") + "/"
+    stamp = now.strftime("%Y-%m-%d")
+    urls = [f"  <url><loc>{base}</loc><lastmod>{stamp}</lastmod>"
+            f"<changefreq>daily</changefreq><priority>1.0</priority></url>",
+            f"  <url><loc>{base}about.html</loc>"
+            f"<changefreq>monthly</changefreq><priority>0.3</priority></url>"]
+    for p in posts[:200]:
+        urls.append(f"  <url><loc>{base}posts/{p['filename']}</loc>"
+                    f"<lastmod>{p.get('created_at','')[:10]}</lastmod>"
+                    f"<priority>0.8</priority></url>")
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+           + "\n".join(urls) + "\n</urlset>\n")
+    with open(os.path.join(DOCS_DIR, "sitemap.xml"), "w", encoding="utf-8") as f:
+        f.write(xml)
+    with open(os.path.join(DOCS_DIR, "robots.txt"), "w", encoding="utf-8") as f:
+        f.write(f"User-agent: *\nAllow: /\nSitemap: {base}sitemap.xml\n")
+
+
 # ---------------------------------------------------------------------
 #  5. ここから実行が始まります
 # ---------------------------------------------------------------------
@@ -698,6 +1054,18 @@ def main():
     print("=" * 56)
 
     posts = load_posts()
+
+    # ★リンク切れ防止★
+    # 記事のHTMLファイルを手で削除した場合、一覧だけが残ると
+    # クリックしてもエラー（404）になってしまいます。
+    # 毎回「ファイルが実在するか」を確認し、無いものは一覧から自動で外します。
+    before = len(posts)
+    posts = [p for p in posts
+             if os.path.exists(os.path.join(POSTS_DIR, p.get("filename", "")))]
+    removed = before - len(posts)
+    if removed:
+        print(f"  ※ ファイルが無くなっていた記事 {removed}件 を一覧から外しました。")
+
     known = {p["filename"] for p in posts}
     created = 0
     failed = 0
@@ -725,6 +1093,9 @@ def main():
         f.write(CSS)
     with open(os.path.join(DOCS_DIR, "index.html"), "w", encoding="utf-8") as f:
         f.write(render_index(posts))
+    with open(os.path.join(DOCS_DIR, "about.html"), "w", encoding="utf-8") as f:
+        f.write(render_about())
+    write_sitemap(posts, now)
     open(os.path.join(DOCS_DIR, ".nojekyll"), "w").close()
 
     save_posts(posts)
