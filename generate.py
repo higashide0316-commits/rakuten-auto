@@ -111,6 +111,21 @@ THEMES = [
 ]
 
 
+# --- 記事の先頭に出す写真（任意）--------------------------------------
+# カテゴリ名 → 画像ファイルの場所。docs/img/ に置いた自分の写真を指定します。
+# 自分で撮った写真を載せると「実物を持っている人が運営しているサイト」に見え、
+# 他の自動生成サイトとの違いが出ます。
+# 使わないカテゴリは書かなければ、写真なしで表示されます。
+
+CATEGORY_IMAGES = {
+    "ハーレー用品": "img/harley.jpg",
+    "ゴルフ用品": "img/golf.jpg",
+}
+
+# 写真の下に出す小さな説明（空にすると出ません）
+PHOTO_CREDIT = "写真：当サイト運営者が撮影"
+
+
 # --- フッターに出すバナー（任意）-------------------------------------
 # 楽天アフィリエイトで発行したバナーのHTMLを、そのまま貼り付けてください。
 # 全ページのフッターに、小さく1枚だけ表示されます。
@@ -407,6 +422,11 @@ header.site .tag{font-size:12px; color:var(--muted); margin:0; width:100%;}
 .crumbs a:hover{color:var(--link); text-decoration:underline;}
 
 /* ---- 見出し ---- */
+figure.hero{margin:12px 0 18px; border-radius:14px; overflow:hidden;
+  border:1px solid var(--line); box-shadow:var(--shadow); background:#fff;}
+figure.hero img{display:block; width:100%; height:auto;}
+figure.hero figcaption{font-size:11.5px; color:var(--muted);
+  padding:7px 12px; background:#fbfcfd; border-top:1px solid var(--line2);}
 h1.article-title{font-size:25px; line-height:1.5; margin:6px 0 10px; font-weight:800;
   letter-spacing:-.01em;}
 h2.sec{font-size:19px; margin:38px 0 14px; padding-left:11px;
@@ -768,6 +788,14 @@ def render_article(post, items):
 
     p.append('<nav class="crumbs"><a href="../index.html">ホーム</a> ／ '
              f'{esc(post["category"])}</nav>')
+    # カテゴリに写真が設定されていれば、記事の先頭に出す
+    photo = CATEGORY_IMAGES.get(post["category"])
+    if photo:
+        cap = (f'<figcaption>{esc(PHOTO_CREDIT)}</figcaption>'
+               if PHOTO_CREDIT else "")
+        p.append(f'<figure class="hero"><img src="../{esc(photo)}" '
+                 f'alt="{esc(post["category"])}" loading="lazy">{cap}</figure>')
+
     p.append(f'<h1 class="article-title">{esc(post["title"])}</h1>')
     p.append(f'<p class="meta"><span class="chip">{esc(post["category"])}</span>'
              f'<span>{esc(post["created_at"])} 時点のデータ</span>'
