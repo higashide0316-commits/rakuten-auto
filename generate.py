@@ -116,14 +116,40 @@ THEMES = [
 # 自分で撮った写真を載せると「実物を持っている人が運営しているサイト」に見え、
 # 他の自動生成サイトとの違いが出ます。
 # 使わないカテゴリは書かなければ、写真なしで表示されます。
+#
+#   ★写真は「何枚でも」並べて書けます。[ ] の中にカンマ区切りで足すだけです。
+#     日付が変わるたびに、上から順に自動で切り替わります。
+#     （例：3枚なら 3日で一周して、また1枚目に戻ります）
+#     毎日同じ写真にならないので、何度も来る読者にも飽きられません。
+#   ★1枚だけにしたいときは、1行だけ書けばOKです。
 
 CATEGORY_IMAGES = {
-    "ハーレー用品": "img/harley.jpg",
-    "ゴルフ用品": "img/golf.jpg",
+    "ハーレー用品": [
+        "img/harley.jpg",    # 外に出したチョッパーの横向き
+        "img/harley2.jpg",   # お店でのリア周りの寄り
+        "img/harley3.jpg",   # 林道のツーリング
+        "img/harley4.jpg",   # サスペンションの採寸
+    ],
+    "ゴルフ用品": [
+        "img/golf.jpg",      # ゴルフ場
+    ],
+    "総合ランキング": [
+        "img/life1.jpg",     # 猫
+        "img/life2.jpg",     # 屋外のカフェ
+    ],
 }
 
 # 写真の下に出す小さな説明（空にすると出ません）
 PHOTO_CREDIT = "写真：当サイト運営者が撮影"
+
+
+# --- SNSでリンクを貼ったときに出る大きな画像（OGP画像）----------------
+# X や LINE に記事のURLを貼ると、この画像が大きなカードで表示されます。
+# ここが空っぽだと味気ないリンクになるので、1枚用意しておくと効果的です。
+# 画像は docs/img/ に置き、1200×630ピクセルで作るのが標準です。
+# 空（""）にすると、この機能は使いません。
+
+OG_IMAGE = "img/ogp.png"
 
 
 # --- フッターに出すバナー（任意）-------------------------------------
@@ -737,9 +763,42 @@ def build_footer_banner():
     return f'<div class="fbanner">{label_html}{code}</div>'
 
 
+def pick_photo(category, date_key=None):
+    """そのカテゴリに使う写真を1枚だけ選ぶ。
+
+    CATEGORY_IMAGES に何枚書いてあっても、日付をもとに順ぐりに選びます。
+    同じ日付なら必ず同じ写真になるので、記事を作り直しても写真は変わりません。
+    """
+    v = CATEGORY_IMAGES.get(category)
+    if not v:
+        return None
+    # 昔の書き方（1枚を文字列で書いたもの）でも動くようにしておく
+    if isinstance(v, str):
+        return v
+    photos = [p for p in v if p]
+    if not photos:
+        return None
+    if len(photos) == 1:
+        return photos[0]
+    # 日付の中の数字をぜんぶ足して、その余りで写真を決める。
+    # 1日進むと足し算の結果も1増えるので、写真が1枚ずつずれていきます。
+    n = 0
+    if date_key:
+        for x in re.findall(r"\d+", str(date_key))[:3]:   # 年・月・日まで
+            n += int(x)
+    return photos[n % len(photos)]
+
+
 def page_shell(title, body_html, is_top=False, description=None, extra_head=""):
     prefix = "" if is_top else "../"
     desc = description or SITE_DESCRIPTION
+    # SNS用の大きな画像（OGP）。設定してあるときだけ入れる。
+    og = ""
+    if (OG_IMAGE or "").strip():
+        og_url = SITE_URL.rstrip("/") + "/" + OG_IMAGE.lstrip("/")
+        og = (f'<meta property="og:image" content="{esc(og_url)}">\n'
+              f'<meta name="twitter:card" content="summary_large_image">\n'
+              f'<meta name="twitter:image" content="{esc(og_url)}">')
     return f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -750,6 +809,8 @@ def page_shell(title, body_html, is_top=False, description=None, extra_head=""):
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(shorten(desc, 120))}">
 <meta property="og:type" content="{'website' if is_top else 'article'}">
+<meta property="og:site_name" content="{esc(SITE_TITLE)}">
+{og}
 <link rel="stylesheet" href="{prefix}style.css">\n<link rel="alternate" type="application/rss+xml" title="{esc(SITE_TITLE)}" href="{prefix}feed.xml">
 {extra_head}
 </head>
@@ -789,7 +850,7 @@ def render_article(post, items):
     p.append('<nav class="crumbs"><a href="../index.html">ホーム</a> ／ '
              f'{esc(post["category"])}</nav>')
     # カテゴリに写真が設定されていれば、記事の先頭に出す
-    photo = CATEGORY_IMAGES.get(post["category"])
+    photo = pick_photo(post["category"], post.get("created_at"))
     if photo:
         cap = (f'<figcaption>{esc(PHOTO_CREDIT)}</figcaption>'
                if PHOTO_CREDIT else "")
