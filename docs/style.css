@@ -14,11 +14,11 @@ body{
   line-height:1.8; font-size:16px; -webkit-text-size-adjust:100%;
 }
 a{color:var(--link);}
-.wrap{max-width:800px; margin:0 auto; padding:0 16px 72px;}
+.wrap{max-width:900px; margin:0 auto; padding:0 16px 72px;}
 
 /* ---- ヘッダー ---- */
 header.site{background:#fff; border-bottom:1px solid var(--line); padding:16px;}
-header.site .inner{max-width:800px; margin:0 auto;
+header.site .inner{max-width:900px; margin:0 auto;
   display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
 header.site .logo{font-size:19px; font-weight:800; letter-spacing:.01em;
   color:var(--text); text-decoration:none; margin:0;}
@@ -158,6 +158,47 @@ footer.site{margin-top:56px; padding:22px 0 0; border-top:1px solid var(--line);
 footer.site a{color:var(--muted);}
 footer.site .fnav{margin:0 0 12px;}
 footer.site .fnav a{margin-right:14px;}
+/* ---- トップページのカード ---- */
+.lede{font-size:14px; color:var(--muted); margin:20px 0 4px;}
+ul.cards{list-style:none; padding:0; margin:0;
+  display:grid; grid-template-columns:repeat(2,1fr); gap:16px;}
+@media (max-width:640px){ ul.cards{grid-template-columns:1fr;} }
+.card{background:#fff; border:1px solid var(--line); border-radius:14px;
+  overflow:hidden; box-shadow:var(--shadow); transition:transform .12s, box-shadow .12s;}
+.card:hover{transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(16,24,40,.12);}
+.card a{display:block; text-decoration:none; color:inherit;}
+.cthumb{height:150px; display:flex; align-items:stretch; gap:2px;
+  background:#eef2f6; border-bottom:1px solid var(--line2); overflow:hidden;}
+.cthumb .sh{position:relative; flex:1 1 0; min-width:0; background:#fff;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;}
+.cthumb .sh img{width:100%; height:100%; object-fit:contain; padding:6px;}
+.cthumb .sh i{position:absolute; left:5px; top:5px; font-style:normal;
+  width:19px; height:19px; border-radius:5px; font-size:11px; font-weight:800;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(27,32,39,.72); color:#fff;}
+.cthumb .sh:first-child i{background:linear-gradient(135deg,#f7d774,#d4a017); color:#4a3500;}
+.cthumb .sh:first-child{flex:1.35 1 0;}
+.cthumb .noimg{margin:auto; font-size:15px; font-weight:800;}
+.cthumb .noimg{font-size:15px; font-weight:800; color:#fff; opacity:.9;}
+.cbody{padding:14px 16px 16px;}
+.cbadge{display:inline-block; padding:2px 9px; border-radius:99px;
+  font-size:11px; font-weight:800; color:#fff; margin-bottom:8px;}
+.card h3{margin:0 0 10px; font-size:15px; line-height:1.55; font-weight:700;}
+.card:hover h3{color:var(--link);}
+.cstat{margin:0 0 6px; font-size:12.5px; color:var(--muted);
+  display:flex; gap:12px; flex-wrap:wrap; align-items:baseline;}
+.cstat .pfrom b{color:var(--price); font-size:14px; font-weight:800;}
+.cstat .prate{color:#a06800;}
+.cdate{margin:0; font-size:11.5px; color:#9aa3af;}
+/* カテゴリごとの色 */
+.c-a{background:#1462b8;} .c-b{background:#0f7b52;} .c-c{background:#b3461e;}
+.c-d{background:#6b3fa0;} .c-e{background:#a0761e;}
+.cthumb.c-a,.cthumb.c-b,.cthumb.c-c,.cthumb.c-d,.cthumb.c-e{background:#f7f9fc;}
+.cthumb.c-a .noimg{color:#1462b8;} .cthumb.c-b .noimg{color:#0f7b52;}
+.cthumb.c-c .noimg{color:#b3461e;} .cthumb.c-d .noimg{color:#6b3fa0;}
+.cthumb.c-e .noimg{color:#a0761e;}
+
 .fbanner{text-align:center; margin:0 0 20px; padding:16px 0 18px;
   border-bottom:1px solid var(--line);}
 .fbanner .fblabel{margin:0 0 8px; font-size:11.5px; color:var(--muted);
