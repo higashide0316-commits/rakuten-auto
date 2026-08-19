@@ -389,11 +389,11 @@ body{
   line-height:1.8; font-size:16px; -webkit-text-size-adjust:100%;
 }
 a{color:var(--link);}
-.wrap{max-width:800px; margin:0 auto; padding:0 16px 72px;}
+.wrap{max-width:900px; margin:0 auto; padding:0 16px 72px;}
 
 /* ---- ヘッダー ---- */
 header.site{background:#fff; border-bottom:1px solid var(--line); padding:16px;}
-header.site .inner{max-width:800px; margin:0 auto;
+header.site .inner{max-width:900px; margin:0 auto;
   display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
 header.site .logo{font-size:19px; font-weight:800; letter-spacing:.01em;
   color:var(--text); text-decoration:none; margin:0;}
@@ -533,6 +533,47 @@ footer.site{margin-top:56px; padding:22px 0 0; border-top:1px solid var(--line);
 footer.site a{color:var(--muted);}
 footer.site .fnav{margin:0 0 12px;}
 footer.site .fnav a{margin-right:14px;}
+/* ---- トップページのカード ---- */
+.lede{font-size:14px; color:var(--muted); margin:20px 0 4px;}
+ul.cards{list-style:none; padding:0; margin:0;
+  display:grid; grid-template-columns:repeat(2,1fr); gap:16px;}
+@media (max-width:640px){ ul.cards{grid-template-columns:1fr;} }
+.card{background:#fff; border:1px solid var(--line); border-radius:14px;
+  overflow:hidden; box-shadow:var(--shadow); transition:transform .12s, box-shadow .12s;}
+.card:hover{transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(16,24,40,.12);}
+.card a{display:block; text-decoration:none; color:inherit;}
+.cthumb{height:150px; display:flex; align-items:stretch; gap:2px;
+  background:#eef2f6; border-bottom:1px solid var(--line2); overflow:hidden;}
+.cthumb .sh{position:relative; flex:1 1 0; min-width:0; background:#fff;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;}
+.cthumb .sh img{width:100%; height:100%; object-fit:contain; padding:6px;}
+.cthumb .sh i{position:absolute; left:5px; top:5px; font-style:normal;
+  width:19px; height:19px; border-radius:5px; font-size:11px; font-weight:800;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(27,32,39,.72); color:#fff;}
+.cthumb .sh:first-child i{background:linear-gradient(135deg,#f7d774,#d4a017); color:#4a3500;}
+.cthumb .sh:first-child{flex:1.35 1 0;}
+.cthumb .noimg{margin:auto; font-size:15px; font-weight:800;}
+.cthumb .noimg{font-size:15px; font-weight:800; color:#fff; opacity:.9;}
+.cbody{padding:14px 16px 16px;}
+.cbadge{display:inline-block; padding:2px 9px; border-radius:99px;
+  font-size:11px; font-weight:800; color:#fff; margin-bottom:8px;}
+.card h3{margin:0 0 10px; font-size:15px; line-height:1.55; font-weight:700;}
+.card:hover h3{color:var(--link);}
+.cstat{margin:0 0 6px; font-size:12.5px; color:var(--muted);
+  display:flex; gap:12px; flex-wrap:wrap; align-items:baseline;}
+.cstat .pfrom b{color:var(--price); font-size:14px; font-weight:800;}
+.cstat .prate{color:#a06800;}
+.cdate{margin:0; font-size:11.5px; color:#9aa3af;}
+/* カテゴリごとの色 */
+.c-a{background:#1462b8;} .c-b{background:#0f7b52;} .c-c{background:#b3461e;}
+.c-d{background:#6b3fa0;} .c-e{background:#a0761e;}
+.cthumb.c-a,.cthumb.c-b,.cthumb.c-c,.cthumb.c-d,.cthumb.c-e{background:#f7f9fc;}
+.cthumb.c-a .noimg{color:#1462b8;} .cthumb.c-b .noimg{color:#0f7b52;}
+.cthumb.c-c .noimg{color:#b3461e;} .cthumb.c-d .noimg{color:#6b3fa0;}
+.cthumb.c-e .noimg{color:#a0761e;}
+
 .fbanner{text-align:center; margin:0 0 20px; padding:16px 0 18px;
   border-bottom:1px solid var(--line);}
 .fbanner .fblabel{margin:0 0 8px; font-size:11.5px; color:var(--muted);
@@ -882,28 +923,52 @@ def render_article(post, items):
 
 
 def render_index(posts):
-    """トップページ（記事一覧）"""
-    body = [f"""<div class="hero">
-  <h1>{esc(SITE_TITLE)}</h1>
-  <p>楽天市場の公式データ（楽天ウェブサービスAPI）を毎日自動で集計し、
-     売れ筋ランキングと価格帯の傾向をまとめています。
-     価格・評価・レビュー数・送料を並べて比較できる形にしているので、
-     商品選びの下調べにお使いください。</p>
-</div>"""]
-
+    """トップページ（記事一覧）— 商品画像つきのカードを並べる"""
     if not posts:
-        body.append("<p>まだ記事がありません。</p>")
-        return page_shell(SITE_TITLE, "\n".join(body), is_top=True)
+        return page_shell(SITE_TITLE, "<p>まだ記事がありません。</p>", is_top=True)
 
-    body.append('<h2 class="sec">最新の記事</h2>')
-    lis = []
+    # カテゴリごとに色を変えて、ひと目で見分けられるようにする
+    colors = {}
+    palette = ["c-a", "c-b", "c-c", "c-d", "c-e"]
+    for p in posts:
+        colors.setdefault(p["category"], palette[len(colors) % len(palette)])
+
+    cards = []
     for p in posts[:TOP_PAGE_ARTICLE_COUNT]:
-        lis.append(f'<li><a href="posts/{esc(p["filename"])}">{esc(p["title"])}</a>'
-                   f'<p class="meta"><span class="chip">{esc(p["category"])}</span>'
-                   f'<span>{esc(p["created_at"])}</span>'
-                   f'<span>{esc(p.get("item_count", ""))}件掲載</span></p></li>')
-    body.append('<ul class="posts">' + "".join(lis) + '</ul>')
-    return page_shell(SITE_TITLE, "\n".join(body), is_top=True)
+        cls = colors.get(p["category"], "c-a")
+        # 上位3商品の写真を並べて「ランキングらしさ」を出す
+        shots = p.get("thumbs") or ([p["thumb"]] if p.get("thumb") else [])
+        if shots:
+            img = "".join(
+                f'<span class="sh"><img src="{esc(u)}" alt="" loading="lazy">'
+                f'<i>{n}</i></span>'
+                for n, u in enumerate(shots, start=1))
+        else:
+            img = f'<span class="noimg">{esc(p["category"])}</span>' 
+
+        price = ""
+        if p.get("min_price"):
+            price = f'<span class="pfrom">最安 <b>{esc(yen(p["min_price"]))}</b></span>'
+        rating = ""
+        if p.get("avg_rating"):
+            rating = f'<span class="prate">平均 ★{esc(p["avg_rating"])}</span>'
+
+        title = p.get("short_title") or p["title"]
+        cards.append(f"""<li class="card">
+  <a href="posts/{esc(p["filename"])}">
+    <div class="cthumb {cls}">{img}</div>
+    <div class="cbody">
+      <span class="cbadge {cls}">{esc(p["category"])}</span>
+      <h3>{esc(title)}</h3>
+      <p class="cstat">{price}{rating}<span class="pn">{esc(p.get("item_count",""))}件</span></p>
+      <p class="cdate">{esc(p["created_at"])}</p>
+    </div>
+  </a>
+</li>""")
+
+    body = (f'<h2 class="sec">最新のランキング</h2>'
+            f'<ul class="cards">{"".join(cards)}</ul>')
+    return page_shell(SITE_TITLE, body, is_top=True)
 
 
 def render_about():
@@ -1014,15 +1079,29 @@ def build_one(theme, now, demo=False):
         return None, []
 
     n = len(items)
+    # トップページのカードに出すための情報も一緒に持たせておく
+    st = analyze(items)
+    thumb = next((i["image"] for i in items if i.get("image")), "")
+    thumbs = [i["image"] for i in items if i.get("image")][:3]
+
     post = {
         "filename": f"{date_slug}-{theme['slug']}.html",
         "slug": theme["slug"],
         "title": theme["title"].format(date=date_str, n=n, kw=keyword),
+        # 一覧では日付を別枠で出すので、見出しから「【日付】」を外したものも用意
+        "short_title": theme["title"].format(date=date_str, n=n, kw=keyword)
+                       .replace(f"【{date_str}】", "").strip(),
         "lead": theme["lead"].format(date=date_str, n=n, kw=keyword),
         "category": theme["category"],
         "keyword": keyword,
         "created_at": now.strftime("%Y-%m-%d %H:%M"),
         "item_count": n,
+        "thumb": thumb,
+        "thumbs": thumbs,
+        "min_price": st["min_price"],
+        "max_price": st["max_price"],
+        "avg_rating": st["avg_rating"],
+        "top_name": shorten(items[0]["name"], 40) if items else "",
     }
 
     # 先にHTMLを完成させてから書き込みます。書きながら作ると、
