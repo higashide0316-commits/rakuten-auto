@@ -1,0 +1,65 @@
+name: Xに自動投稿
+
+# ============================================================
+#  いつ投稿するか
+# ============================================================
+# 1回の実行で1件つぶやきます。1投稿あたり約1.5円なので、
+# 1日5回 × 30日 = 150投稿 → 月およそ225円です。
+#
+# 時刻は世界標準時(UTC)で書きます。日本時間から9時間引いた値です。
+#   UTC 23:00 → 日本 08:00（朝の通勤時間）
+#   UTC 03:00 → 日本 12:00（昼休み）
+#   UTC 06:00 → 日本 15:00（午後）
+#   UTC 10:00 → 日本 19:00（帰宅時間）
+#   UTC 12:00 → 日本 21:00（ゴールデンタイム）
+#
+# 投稿を減らしたいときは、下の時刻を削ってください。
+on:
+  schedule:
+    - cron: "0 23,3,6,10,12 * * *"
+
+  # 手動で1件つぶやきたいときはこのボタンから
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 同時に2つ動いて二重投稿しないようにする
+concurrency:
+  group: social-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Python を準備
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Xに投稿
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
+        run: python generate.py --post
+
+      - name: 投稿済みの記録を保存
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --staged --quiet; then
+            echo "投稿はありませんでした。"
+          else
+            git commit -m "X投稿: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
+            # 記事生成と重なったときのために、取り込んでから送る
+            git pull --rebase --autostash origin main || true
+            git push
+          fi
