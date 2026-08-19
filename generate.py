@@ -10,6 +10,7 @@
    python generate.py           … 本番（楽天から商品を取ってきて記事を作る）
    python generate.py --demo    … お試し（にせ物データで見た目だけ確認）
    python generate.py --check   … 楽天APIにつながるかテストする
+   python generate.py --post    … Xに1件つぶやく（未投稿のものから順に）
 
  ★ 設定を変えたいときは、下の「設定エリア」だけ書き換えてください。
    それより下は、意味が分からなければ触らなくて大丈夫です。
@@ -129,6 +130,13 @@ FOOTER_BANNER = """
 
 # バナーの上に出す小さな見出し（空にすると出ません）
 FOOTER_BANNER_LABEL = "楽天市場のキャンペーン"
+
+
+# --- SNS（X）への自動投稿 ---------------------------------------------
+# 1回の実行で何件つぶやくか。X APIは1投稿あたり約1.5円かかります。
+#   1件 × 1日6回実行 = 1日6投稿 → 月およそ270円
+# 減らしたいときは、投稿用ワークフローの実行間隔を広げてください。
+SNS_POSTS_PER_RUN = 1
 
 
 # --- 楽天APIの細かい設定（基本さわらなくてOK）------------------------
@@ -1031,6 +1039,173 @@ def build_one(theme, now, demo=False):
 
 
 # ---------------------------------------------------------------------
+#  3.5 X（旧Twitter）への自動投稿
+# ---------------------------------------------------------------------
+
+POSTED_FILE = os.path.join(ROOT, "data", "posted.json")
+X_POST_URL = "https://api.x.com/2/tweets"
+
+
+def _pcts(text):
+    """OAuthの決まりに従って文字をエンコードする（記号の扱いが独特）"""
+    return urllib.parse.quote(str(text), safe="~-._")
+
+
+def _oauth_header(method, url, keys):
+    """
+    Xに「これは本人からの投稿です」と証明するための署名を作る。
+
+    OAuth 1.0a という古い仕組みですが、サーバーから自動投稿するには
+    いまでもこれが一番確実です。外部ライブラリなしで実装しています。
+    """
+    import base64
+    import hashlib
+    import hmac
+    import secrets
+
+    params = {
+        "oauth_consumer_key": keys["api_key"],
+        "oauth_nonce": secrets.token_hex(16),
+        "oauth_signature_method": "HMAC-SHA1",
+        "oauth_timestamp": str(int(time.time())),
+        "oauth_token": keys["access_token"],
+        "oauth_version": "1.0",
+    }
+    # 署名のもとになる文字列を、決められた順番で組み立てる
+    joined = "&".join(f"{_pcts(k)}={_pcts(params[k])}" for k in sorted(params))
+    base = f"{method.upper()}&{_pcts(url)}&{_pcts(joined)}"
+    signing_key = f'{_pcts(keys["api_secret"])}&{_pcts(keys["access_secret"])}'
+    sig = base64.b64encode(
+        hmac.new(signing_key.encode(), base.encode(), hashlib.sha1).digest()
+    ).decode()
+
+    params["oauth_signature"] = sig
+    return "OAuth " + ", ".join(f'{_pcts(k)}="{_pcts(params[k])}"'
+                                for k in sorted(params))
+
+
+def get_x_keys():
+    """GitHubのSecretsからXの鍵を取り出す。1つでも欠けていたら None"""
+    keys = {
+        "api_key": os.environ.get("X_API_KEY", "").strip(),
+        "api_secret": os.environ.get("X_API_SECRET", "").strip(),
+        "access_token": os.environ.get("X_ACCESS_TOKEN", "").strip(),
+        "access_secret": os.environ.get("X_ACCESS_SECRET", "").strip(),
+    }
+    return keys if all(keys.values()) else None
+
+
+def post_to_x(text, keys):
+    """Xに1件つぶやく。成功したら True"""
+    body = json.dumps({"text": text}, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        X_POST_URL, data=body, method="POST",
+        headers={
+            "Authorization": _oauth_header("POST", X_POST_URL, keys),
+            "Content-Type": "application/json",
+            "User-Agent": "rakuten-auto-blog/1.0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as res:
+            json.loads(res.read().decode("utf-8"))
+        return True
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = e.read().decode("utf-8", errors="replace")[:400]
+        except Exception:
+            pass
+        print(f"  ✗ 投稿に失敗しました HTTP {e.code}: {detail}")
+        if e.code == 403:
+            print("     【原因】アプリの権限が「Read」のままの可能性があります。")
+            print("     X Developer Portal で「Read and write」に変更し、")
+            print("     そのあと Access Token を再発行してください。")
+        elif e.code == 401:
+            print("     【原因】4つの鍵のどれかが間違っています。")
+        elif e.code == 429:
+            print("     【原因】投稿しすぎです。しばらく待ってください。")
+        return False
+    except Exception as e:
+        print(f"  ✗ 投稿に失敗しました: {type(e).__name__}: {e}")
+        return False
+
+
+def read_social_items():
+    """social.xml から、投稿する文面とURLの組を読み取る"""
+    path = os.path.join(DOCS_DIR, "social.xml")
+    if not os.path.exists(path):
+        return []
+    xml = open(path, encoding="utf-8").read()
+    out = []
+    for block in re.findall(r"<item>(.*?)</item>", xml, re.S):
+        def grab(tag):
+            m = re.search(rf"<{tag}[^>]*>(.*?)</{tag}>", block, re.S)
+            if not m:
+                return ""
+            return (m.group(1).replace("&lt;", "<").replace("&gt;", ">")
+                    .replace("&quot;", '"').replace("&amp;", "&").strip())
+        out.append({"text": grab("title"), "url": grab("link"),
+                    "guid": grab("guid")})
+    return out
+
+
+def run_post():
+    """--post で呼ばれる。まだ投稿していない項目を順に投稿する"""
+    print("=" * 56)
+    print(" X（旧Twitter）への自動投稿")
+    print("=" * 56)
+
+    keys = get_x_keys()
+    if not keys:
+        print("\n! Xの鍵が設定されていないので、投稿はしません。")
+        print("  GitHubのSecretsに X_API_KEY / X_API_SECRET /")
+        print("  X_ACCESS_TOKEN / X_ACCESS_SECRET の4つを登録してください。")
+        return 0
+
+    items = read_social_items()
+    if not items:
+        print("\n! social.xml が見つからないか、中身が空です。")
+        return 0
+
+    # すでに投稿したものの記録を読む
+    posted = []
+    if os.path.exists(POSTED_FILE):
+        try:
+            posted = json.load(open(POSTED_FILE, encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            posted = []
+    done = set(posted)
+
+    todo = [i for i in items if i["guid"] and i["guid"] not in done]
+    if not todo:
+        print("\n・新しく投稿するものはありません。")
+        return 0
+
+    print(f"\n未投稿 {len(todo)}件 / 今回は最大 {SNS_POSTS_PER_RUN}件 投稿します")
+    sent = 0
+    for item in todo[:SNS_POSTS_PER_RUN]:
+        text = f'{item["text"]}\n{item["url"]}'
+        print(f"\n▼ 投稿します:\n{text}\n")
+        if post_to_x(text, keys):
+            print("  ✓ 投稿しました")
+            posted.append(item["guid"])
+            sent += 1
+            time.sleep(2)
+        else:
+            break
+
+    # 記録が増えすぎないよう、新しい500件だけ残す
+    posted = posted[-500:]
+    os.makedirs(os.path.dirname(POSTED_FILE), exist_ok=True)
+    with open(POSTED_FILE, "w", encoding="utf-8") as f:
+        json.dump(posted, f, ensure_ascii=False, indent=1)
+
+    print(f"\n完了: {sent}件 投稿しました")
+    return 0
+
+
+# ---------------------------------------------------------------------
 #  4. 接続テスト（--check）
 # ---------------------------------------------------------------------
 
@@ -1201,6 +1376,18 @@ def write_feeds(posts, built, now):
     mixed += article_items[len(product_items):]
     mixed += product_items[len(article_items):]
 
+    # 同じ商品が複数の記事で1位になることがあります。
+    # そのまま並べると同じ内容を2回つぶやいてしまうので、重複を取り除きます。
+    seen, unique = set(), []
+    for it in mixed:
+        m = re.search(r"<guid[^>]*>(.*?)</guid>", it, re.S)
+        key = m.group(1) if m else it
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(it)
+    mixed = unique
+
     with open(os.path.join(DOCS_DIR, "social.xml"), "w", encoding="utf-8") as f:
         f.write(_rss(f"{SITE_TITLE}（SNS投稿用）",
                      "SNSへの自動投稿に使うフィードです。", base, mixed, now))
@@ -1240,6 +1427,9 @@ def write_sitemap(posts, now):
 def main():
     if "--check" in sys.argv:
         sys.exit(run_check())
+
+    if "--post" in sys.argv:
+        sys.exit(run_post())
 
     demo = "--demo" in sys.argv
     now = datetime.datetime.now(JST)
